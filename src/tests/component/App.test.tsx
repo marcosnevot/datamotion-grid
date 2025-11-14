@@ -1,10 +1,17 @@
-import { render, screen } from '@testing-library/react';
-import React from 'react';
-import App from '../../App';
+import { render, screen } from "@testing-library/react";
+import App from "../../App";
 
-describe('App', () => {
-  it('renders Phase 0 setup message', () => {
+describe("App", () => {
+  it("renders main layout with data grid table", () => {
     render(<App />);
-    expect(screen.getByText(/DataMotion Grid – Phase 0 setup/i)).toBeInTheDocument();
+
+    // Main view title
+    expect(
+      screen.getByText(/Data grid playground/i),
+    ).toBeInTheDocument();
+
+    // Main data grid table
+    const table = screen.getByRole("table");
+    expect(table).toBeInTheDocument();
   });
 });
