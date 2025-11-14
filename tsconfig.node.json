@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "noEmit": true
+  },
+  "include": ["vite.config.ts", "vitest.config.ts"],
+  "exclude": ["src"]
+}
