@@ -16,9 +16,10 @@ function App() {
           <h1 className="text-lg font-semibold tracking-tight">
             Data grid playground
           </h1>
-          <p className="mt-1 text-sm text-slate-400">
-            Phase 1 focuses on the application shell and a simple static data
-            grid. No filters, sorting or virtualization are implemented yet.
+          <p className="text-sm text-slate-400">
+            Phase 2 focuses on wiring a massive mock dataset, integrating TanStack Table
+            and adding a virtualized body for high-performance scrolling. Filters,
+            sorting and advanced interactions will arrive in later phases.
           </p>
         </header>
 
