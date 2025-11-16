@@ -1,36 +1,40 @@
-// src/features/datagrid/hooks/useDataGrid.ts
-
-import type { Table } from '@tanstack/react-table';
-import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import { useReactTable, getCoreRowModel, getSortedRowModel, getFilteredRowModel } from '@tanstack/react-table';
 import { useDataset } from '../../dataset/hooks/useDataset';
 import { gridColumns } from '../config/columnsDefinition';
-import type { GridRow } from '../types/gridTypes';
 import { ENABLE_DEBUG_MEASURES } from '../config/gridSettings';
+import type { GridRow } from '../types/gridTypes';
+import { useGridStore } from '../store/gridStore';
 
-export interface UseDataGridResult {
-  table: Table<GridRow>;
-  rowCount: number;
-  isLoading: boolean;
-  error: Error | null;
-}
-
-/**
- * useDataGrid
- * Orquesta dataset + TanStack Table.
- * En Fase 2 solo usamos el coreRowModel, sin sorting ni filtros.
- */
-export function useDataGrid(): UseDataGridResult {
+export const useDataGrid = () => {
   const { rows, isLoading, error } = useDataset({
     debugPerformance: ENABLE_DEBUG_MEASURES,
   });
 
-  // React Compiler reports this as an incompatible library, but TanStack Table
-  // is intentionally used in this hook and its APIs are designed to be stable.
+  const {
+    sorting,
+    columnFilters,
+    globalFilter,
+    setSorting,
+    setColumnFilters,
+    setGlobalFilter,
+  } = useGridStore();
+
+  // React Compiler: TanStack Table exposes non-memoizable functions; this hook is intentionally excluded from memoization.
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable<GridRow>({
     data: rows,
     columns: gridColumns,
+    state: {
+      sorting,
+      columnFilters,
+      globalFilter,
+    },
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
   });
 
   return {
@@ -39,4 +43,4 @@ export function useDataGrid(): UseDataGridResult {
     isLoading,
     error,
   };
-}
+};

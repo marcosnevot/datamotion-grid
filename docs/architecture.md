@@ -85,3 +85,68 @@ This separation makes it easier to:
 - Write focused tests:
   - Unit tests for dataset generation and virtualization helpers.
   - Component tests for `DataGrid` and its integration behaviour.
+
+
+## Phase 3 – Grid interactions (sorting, filtering, search)
+
+### Overview
+
+Phase 3 turns the previously read-only virtualized grid into an interactive analytical grid:
+
+- Column sorting on all key columns (`id`, `name`, `email`, `status`, `country`, `createdAt`, `amount`).
+- Per-column filters (text, select, numeric, date).
+- Global search across multiple columns.
+- A centralized grid state store using Zustand to keep sorting, filters and global search in sync.
+
+The virtualization layer from Phase 2 remains unchanged and continues to be responsible for rendering performance.
+
+### Data flow with grid store
+
+High-level pipeline:
+
+- Dataset layer:
+  - `features/dataset/generator/generateMockDataset.ts`
+  - `features/dataset/hooks/useDataset.ts`
+- Grid orchestration:
+  - `features/datagrid/hooks/useDataGrid.ts`
+- Grid state:
+  - `features/datagrid/store/gridStore.ts`
+- Table model (TanStack Table):
+  - Sorting, filtering and global search powered by `@tanstack/react-table`.
+- Presentation:
+  - `DataGridToolbar` (global search + clear filters)
+  - `DataGridHeader` (sorting + per-column filters)
+  - `DataGridStatsBar` (visible vs total rows + filters/sorting counts)
+  - `DataGridVirtualBody` (virtualized rows)
+
+### Textual diagram
+
+```text
+generateMockDataset → useDataset → useDataGrid
+  → gridStore (sorting, columnFilters, globalFilter)
+  → useReactTable (TanStack Table: sorting + filtering)
+  → DataGridToolbar / DataGridHeader / DataGridStatsBar
+  → DataGridVirtualBody (TanStack Virtual rows)
+```
+
+### TanStack Table and gridStore responsibilities
+
+- `gridStore` (Zustand):
+  - Single source of truth for:
+    - `sorting` (SortingState)
+    - `columnFilters` (ColumnFiltersState)
+    - `globalFilter` (string)
+  - Exposes actions:
+    - `setSorting`, `setColumnFilters`, `setGlobalFilter`
+    - `resetFilters()` to clear filters and global search.
+    - `resetSorting()` to clear sorting state.
+
+- `useDataGrid`:
+  - Reads state from `gridStore`.
+  - Configures `useReactTable` with:
+    - `state: { sorting, columnFilters, globalFilter }`
+    - `onSortingChange`, `onColumnFiltersChange`, `onGlobalFilterChange`
+    - `getSortedRowModel` and `getFilteredRowModel`.
+  - Keeps the virtualized body independent of how data is filtered or sorted.
+
+This separation allows the grid to grow with more interactions (column visibility, presets, row selection, etc.) without touching dataset or virtualization layers.

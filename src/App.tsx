@@ -1,3 +1,4 @@
+// src/App.tsx
 import { AppShell } from "./components/layout/AppShell";
 import { AppHeader } from "./components/layout/AppHeader";
 import { AppFooter } from "./components/layout/AppFooter";
@@ -16,11 +17,6 @@ function App() {
           <h1 className="text-lg font-semibold tracking-tight">
             Data grid playground
           </h1>
-          <p className="text-sm text-slate-400">
-            Phase 2 focuses on wiring a massive mock dataset, integrating TanStack Table
-            and adding a virtualized body for high-performance scrolling. Filters,
-            sorting and advanced interactions will arrive in later phases.
-          </p>
         </header>
 
         <div className="flex-1">

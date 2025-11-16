@@ -7,10 +7,11 @@ import type { DatasetStatus } from '../../dataset/types/datasetTypes';
 import { DEFAULT_ROW_HEIGHT, VIRTUALIZED_OVERSCAN } from '../config/gridSettings';
 import type { GridRow } from '../types/gridTypes';
 
-interface DataGridVirtualBodyProps {
+type DataGridVirtualBodyProps = {
   table: Table<GridRow>;
-  scrollContainerRef: RefObject<HTMLDivElement>;
-}
+  scrollContainerRef: RefObject<HTMLDivElement | null>;
+};
+
 
 function getStatusClasses(status: DatasetStatus): string {
   switch (status) {

@@ -1,15 +1,15 @@
 // src/features/datagrid/components/DataGrid.tsx
 
 import { useRef } from 'react';
-import { flexRender } from '@tanstack/react-table';
 import { useDataGrid } from '../hooks/useDataGrid';
 import { DataGridVirtualBody } from './DataGridVirtualBody';
+import { DataGridHeader } from './DataGridHeader';
+import { DataGridToolbar } from './DataGridToolbar';
+import { DataGridStatsBar } from './DataGridStatsBar';
 
 export function DataGrid() {
   const { table, rowCount, isLoading, error } = useDataGrid();
-  const headerGroups = table.getHeaderGroups();
-
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   return (
     <section
@@ -19,11 +19,11 @@ export function DataGrid() {
       <header className="flex items-end justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-slate-50">
-            Massive dataset (Phase 2 – virtualized body)
+            Massive dataset (Phase 3 – sorting & filtering)
           </h2>
           <p className="text-xs text-slate-400">
-            TanStack Table + TanStack Virtual rendering only visible rows for
-            smooth scrolling with large datasets.
+            Column sorting, per-column filters and global search on top of the
+            virtualized body for large datasets.
           </p>
         </div>
 
@@ -50,62 +50,26 @@ export function DataGrid() {
             Failed to load dataset: {error.message}
           </div>
         ) : (
-          <div
-            ref={scrollContainerRef}
-            className="max-h-[calc(100vh-260px)] overflow-auto"
-          >
-            <table
-              className="min-w-full text-left text-sm"
-              role="table"
+          <>
+            <DataGridToolbar />
+            <DataGridStatsBar table={table} totalRowCount={rowCount} />
+
+            <div
+              ref={scrollContainerRef}
+              className="max-h-[calc(100vh-260px)] overflow-auto"
             >
-              <thead className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur">
-                {headerGroups.map((headerGroup) => (
-                  <tr
-                    key={headerGroup.id}
-                    className="border-b border-slate-800 text-xs uppercase tracking-wide text-slate-400"
-                  >
-                    {headerGroup.headers.map((header) => {
-                      if (header.isPlaceholder) {
-                        return (
-                          <th
-                            key={header.id}
-                            className="px-4 py-2 font-medium"
-                          />
-                        );
-                      }
-
-                      const meta = header.column.columnDef.meta;
-                      const align = meta?.align ?? 'left';
-
-                      const alignClass =
-                        align === 'right'
-                          ? 'text-right'
-                          : align === 'center'
-                          ? 'text-center'
-                          : 'text-left';
-
-                      return (
-                        <th
-                          key={header.id}
-                          className={`px-4 py-2 font-medium ${alignClass}`}
-                        >
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
-                          )}
-                        </th>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </thead>
-
-              <DataGridVirtualBody
-                table={table}
-                scrollContainerRef={scrollContainerRef}
-              />
-            </table>
-          </div>
+              <table
+                className="min-w-full text-left text-sm"
+                role="table"
+              >
+                <DataGridHeader table={table} />
+                <DataGridVirtualBody
+                  table={table}
+                  scrollContainerRef={scrollContainerRef}
+                />
+              </table>
+            </div>
+          </>
         )}
       </div>
     </section>

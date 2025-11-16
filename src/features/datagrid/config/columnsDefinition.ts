@@ -1,11 +1,26 @@
 // src/features/datagrid/config/columnsDefinition.ts
-
 import type { ColumnDef } from '@tanstack/react-table';
-import type { GridColumnId, GridColumnMeta, GridRow } from '../types/gridTypes';
+import type {
+  GridRow,
+  GridColumnId,
+  GridColumnMeta,
+} from '../types/gridTypes';
+import {
+  includesString,
+  equalsString,
+  numberGreaterOrEqual,
+} from '../utils/filterUtils';
+import {
+  sortByNumber,
+  sortByString,
+  sortByStatus,
+  sortByDate,
+} from '../utils/sortUtils';
 
 type GridColumnDef = ColumnDef<GridRow, unknown> & {
   id: GridColumnId;
-  meta?: GridColumnMeta;
+  accessorKey: GridColumnId;
+  meta: GridColumnMeta;
 };
 
 export const gridColumns: GridColumnDef[] = [
@@ -15,10 +30,13 @@ export const gridColumns: GridColumnDef[] = [
     header: 'ID',
     meta: {
       label: 'ID',
+      align: 'right',
       isNumeric: true,
-      align: 'left',
-      minWidth: 80,
     },
+    enableSorting: true,
+    enableColumnFilter: false,
+    enableGlobalFilter: false,
+    sortingFn: sortByNumber,
   },
   {
     id: 'name',
@@ -27,8 +45,13 @@ export const gridColumns: GridColumnDef[] = [
     meta: {
       label: 'Name',
       align: 'left',
-      minWidth: 160,
+      filterType: 'text',
     },
+    enableSorting: true,
+    enableColumnFilter: true,
+    enableGlobalFilter: true,
+    sortingFn: sortByString,
+    filterFn: includesString,
   },
   {
     id: 'email',
@@ -37,8 +60,13 @@ export const gridColumns: GridColumnDef[] = [
     meta: {
       label: 'Email',
       align: 'left',
-      minWidth: 220,
+      filterType: 'text',
     },
+    enableSorting: true,
+    enableColumnFilter: true,
+    enableGlobalFilter: true,
+    sortingFn: sortByString,
+    filterFn: includesString,
   },
   {
     id: 'status',
@@ -46,9 +74,14 @@ export const gridColumns: GridColumnDef[] = [
     header: 'Status',
     meta: {
       label: 'Status',
-      align: 'left',
-      minWidth: 110,
+      align: 'center',
+      filterType: 'select',
     },
+    enableSorting: true,
+    enableColumnFilter: true,
+    enableGlobalFilter: false,
+    sortingFn: sortByStatus,
+    filterFn: equalsString,
   },
   {
     id: 'country',
@@ -57,8 +90,13 @@ export const gridColumns: GridColumnDef[] = [
     meta: {
       label: 'Country',
       align: 'left',
-      minWidth: 140,
+      filterType: 'text',
     },
+    enableSorting: true,
+    enableColumnFilter: true,
+    enableGlobalFilter: true,
+    sortingFn: sortByString,
+    filterFn: includesString,
   },
   {
     id: 'createdAt',
@@ -67,8 +105,12 @@ export const gridColumns: GridColumnDef[] = [
     meta: {
       label: 'Created at',
       align: 'left',
-      minWidth: 140,
+      filterType: 'date', // preparado para futuros filtros por fecha
     },
+    enableSorting: true,
+    enableColumnFilter: false, // filtro de fecha se activará en otra fase
+    enableGlobalFilter: false,
+    sortingFn: sortByDate,
   },
   {
     id: 'amount',
@@ -78,7 +120,12 @@ export const gridColumns: GridColumnDef[] = [
       label: 'Amount',
       align: 'right',
       isNumeric: true,
-      minWidth: 120,
+      filterType: 'number',
     },
+    enableSorting: true,
+    enableColumnFilter: true,
+    enableGlobalFilter: false,
+    sortingFn: sortByNumber,
+    filterFn: numberGreaterOrEqual,
   },
 ];
