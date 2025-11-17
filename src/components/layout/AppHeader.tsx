@@ -11,14 +11,14 @@ export function AppHeader() {
             DataMotion Grid
           </span>
           <span className="text-xs text-slate-400">
-            Phase 3 – sorting & filtering
+            Phase 4 – animations &amp; microinteractions
           </span>
         </div>
       </div>
 
       <div className="flex items-center gap-3">
         <span className="hidden sm:inline text-xs text-slate-400">
-          Build status: <span className="text-emerald-400">Phase 3</span>
+          Build status: <span className="text-emerald-400">Phase 4</span>
         </span>
 
         <button

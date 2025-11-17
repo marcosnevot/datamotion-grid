@@ -121,3 +121,92 @@ Phase 3 transforms the grid from a read-only virtualized table into an interacti
   - Arrow-key navigation between cells.
   - Shortcut to focus the global search.
   - Shortcut to clear filters/sorting.
+
+---
+
+## Phase 4 – Animations & microinteractions (Framer Motion)
+
+Phase 4 focuses on **visual feedback** without altering the functional behavior of the grid. Animations must enhance comprehension, not draw attention to themselves.
+
+### Design principles
+
+- Animate only **cheap properties**:
+  - `opacity` and `transform` (e.g. translate, scale).
+- Keep durations short:
+  - Typically between **150–220 ms** (`fast` / `medium` motion tokens).
+- Avoid continuous or scroll-driven animations:
+  - Animations should respond to **discrete user actions** (hover, sort, filter, initial load).
+- No animation should block interaction:
+  - The grid remains fully usable while animations run.
+- All motion is gated by:
+  - `prefers-reduced-motion` (system setting).
+  - Shared motion tokens (`MOTION_DURATIONS`, easing curves, elevation offset).
+
+### Layout & shell animations
+
+- **Main content (`AppShell` / page body)**:
+  - On initial load, the main content fades in and moves gently from below:
+    - Opacity: `0 → 1`.
+    - Vertical offset: `8px → 0`.
+  - This happens **once on page mount**, not on every re-render.
+- **Side panel**:
+  - On desktop (`xl+`), the insight panel appears with:
+    - A short horizontal slide-in from the right.
+    - A subtle fade-in.
+  - The animation is subtle enough not to distract from the grid.
+
+### Grid-level microinteractions
+
+- **Grid container (`DataGrid`)**:
+  - The grid card fades in and moves slightly from below on mount.
+  - This animation should feel aligned with the main content motion but slightly lighter.
+
+- **Row hover (`DataGridRow`)**:
+  - On desktop hover:
+    - A tiny elevation effect using `translateY` (e.g. `-2px`) and background highlight.
+    - No large scale or shadow changes; the effect should feel “crisp” and minimal.
+  - Hover is **per-row only** and does not affect virtualization behavior.
+
+- **Sorting feedback (`DataGridHeader`)**:
+  - Sort icons react to state changes:
+    - `none → asc → desc → none` is accompanied by a small change in position and/or opacity.
+    - The header text remains stable; only the icon animates.
+  - `aria-sort` remains the primary accessibility indicator; the animation is purely visual sugar.
+
+- **Toolbar (`DataGridToolbar`)**:
+  - The toolbar appears with a short fade/slide when the grid mounts.
+  - The “Clear filters” button may use a very small scale/opacity feedback on press.
+  - Animations do not modify the timing or semantics of debounced search.
+
+- **Stats bar (`DataGridStatsBar`)**:
+  - The main label (`Showing X of Y rows`) and filter/sorting indicators transition smoothly when values change:
+    - Small vertical offset and opacity change are acceptable.
+  - Changes should feel like an update of state, not like a re-layout of the whole card.
+
+### Accessibility and reduced motion
+
+- The app respects `prefers-reduced-motion`:
+
+  - When the system requests reduced motion:
+    - Durations are effectively reduced to **0** (or near-0).
+    - Decorative effects (elevation, icon transitions) are minimized.
+  - Global configuration ensures components do not have to reimplement the check individually, except in edge cases.
+
+- Animations never replace semantic cues:
+  - Sorting state is still expressed via `aria-sort` and visible icons.
+  - Filter and search state are still represented by text (stats bar, button states, placeholders).
+
+### Performance considerations for virtualized grids
+
+- Virtualization rules remain unchanged:
+  - `DataGridVirtualBody` continues to render only the visible window of rows.
+- Animations **must not**:
+  - Animate row height or padding that could interfere with the virtualizer’s measurements.
+  - Trigger on every scroll frame.
+- Recommended pattern:
+  - Row-level motion responds only to **hover/focus**.
+  - Dataset changes from filters/sorting are communicated via:
+    - Light motion on the grid container or stats bar.
+    - Never by animating every row in bulk.
+
+

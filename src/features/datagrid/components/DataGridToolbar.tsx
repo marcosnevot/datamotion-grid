@@ -1,7 +1,12 @@
+// src/features/datagrid/components/DataGridToolbar.tsx
 import type { ChangeEvent } from 'react';
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { useGridStore } from '../store/gridStore';
 import { useDebouncedValue } from '../../../hooks/useDebouncedValue';
+import { createMotionTransition } from '../config/motionSettings';
+
+const TOOLBAR_TRANSITION = createMotionTransition('fast');
 
 export const DataGridToolbar: React.FC = () => {
   const globalFilter = useGridStore((state) => state.globalFilter);
@@ -32,7 +37,12 @@ export const DataGridToolbar: React.FC = () => {
   const isClearDisabled = !hasActiveSearch && !hasColumnFilters;
 
   return (
-    <div className="mb-2 border-b border-slate-200 pb-2 text-xs dark:border-slate-800">
+    <motion.div
+      className="mb-2 border-b border-slate-200 pb-2 text-xs dark:border-slate-800"
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={TOOLBAR_TRANSITION}
+    >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-1 items-center gap-2">
           <input
@@ -56,6 +66,6 @@ export const DataGridToolbar: React.FC = () => {
           </button>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };

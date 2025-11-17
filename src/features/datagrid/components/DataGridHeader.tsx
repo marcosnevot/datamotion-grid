@@ -1,10 +1,12 @@
 // src/features/datagrid/components/DataGridHeader.tsx
+import { motion } from 'framer-motion';
 import type { Table, Column } from '@tanstack/react-table';
 import type {
   GridRow,
   GridColumnMeta,
   GridColumnAlign,
 } from '../types/gridTypes';
+import { createMotionTransition } from '../config/motionSettings';
 
 type DataGridHeaderProps = {
   table: Table<GridRow>;
@@ -110,11 +112,19 @@ const renderFilterControl = (column: Column<GridRow, unknown>) => {
   );
 };
 
+const HEADER_TRANSITION = createMotionTransition('fast');
+const SORT_ICON_TRANSITION = createMotionTransition('fast');
+
 export const DataGridHeader = ({ table }: DataGridHeaderProps) => {
   const headerGroups = table.getHeaderGroups();
 
   return (
-    <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur dark:bg-slate-900/90">
+    <motion.thead
+      className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur dark:bg-slate-900/90"
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={HEADER_TRANSITION}
+    >
       {headerGroups.map((headerGroup) => (
         <tr
           key={headerGroup.id}
@@ -158,15 +168,23 @@ export const DataGridHeader = ({ table }: DataGridHeaderProps) => {
                         : 'cursor-default'
                     }`}
                   >
-                    <span>
-                      {header.column.columnDef.header as string}
-                    </span>
+                    <span>{header.column.columnDef.header as string}</span>
                     {canSort && (
-                      <span className="text-[9px] opacity-80">
+                      <motion.span
+                        className="text-[9px] opacity-80"
+                        animate={
+                          sortedState === 'asc'
+                            ? { opacity: 1, y: -1 }
+                            : sortedState === 'desc'
+                            ? { opacity: 1, y: 1 }
+                            : { opacity: 0.7, y: 0 }
+                        }
+                        transition={SORT_ICON_TRANSITION}
+                      >
                         {sortedState === 'asc' && '▲'}
                         {sortedState === 'desc' && '▼'}
                         {!sortedState && '▽'}
-                      </span>
+                      </motion.span>
                     )}
                   </button>
 
@@ -177,6 +195,6 @@ export const DataGridHeader = ({ table }: DataGridHeaderProps) => {
           })}
         </tr>
       ))}
-    </thead>
+    </motion.thead>
   );
 };

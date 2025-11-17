@@ -1,11 +1,15 @@
 // src/features/datagrid/components/DataGridStatsBar.tsx
+import { motion } from 'framer-motion';
 import type { Table, TableState } from '@tanstack/react-table';
 import type { GridRow } from '../types/gridTypes';
+import { createMotionTransition } from '../config/motionSettings';
 
 type DataGridStatsBarProps = {
   table: Table<GridRow>;
   totalRowCount: number;
 };
+
+const STATS_BAR_TRANSITION = createMotionTransition('fast');
 
 export const DataGridStatsBar: React.FC<DataGridStatsBarProps> = ({
   table,
@@ -39,12 +43,17 @@ export const DataGridStatsBar: React.FC<DataGridStatsBarProps> = ({
     : 'Sorting: none';
 
   return (
-    <div className="mb-2 border-b border-slate-800 px-3 py-2 text-[11px] text-slate-300 dark:border-slate-700 sm:flex sm:items-center sm:justify-between">
+    <motion.div
+      className="mb-2 border-b border-slate-800 px-3 py-2 text-[11px] text-slate-300 dark:border-slate-700 sm:flex sm:items-center sm:justify-between"
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={STATS_BAR_TRANSITION}
+    >
       <div className="font-medium">{mainLabel}</div>
       <div className="mt-1 flex flex-wrap gap-3 sm:mt-0">
         <span className="text-slate-400">{filtersLabel}</span>
         <span className="text-slate-400">{sortingLabel}</span>
       </div>
-    </div>
+    </motion.div>
   );
 };

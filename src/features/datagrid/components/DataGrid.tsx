@@ -1,29 +1,35 @@
 // src/features/datagrid/components/DataGrid.tsx
-
 import { useRef } from 'react';
+import { motion } from 'framer-motion';
 import { useDataGrid } from '../hooks/useDataGrid';
 import { DataGridVirtualBody } from './DataGridVirtualBody';
 import { DataGridHeader } from './DataGridHeader';
 import { DataGridToolbar } from './DataGridToolbar';
 import { DataGridStatsBar } from './DataGridStatsBar';
+import { createMotionTransition } from '../config/motionSettings';
+
+const GRID_SECTION_TRANSITION = createMotionTransition('medium');
 
 export function DataGrid() {
   const { table, rowCount, isLoading, error } = useDataGrid();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   return (
-    <section
+    <motion.section
       aria-label="Data grid"
       className="flex flex-col gap-4"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={GRID_SECTION_TRANSITION}
     >
       <header className="flex items-end justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-slate-50">
-            Massive dataset (Phase 3 – sorting & filtering)
+            Massive dataset (Phase 4 – animations &amp; microinteractions)
           </h2>
           <p className="text-xs text-slate-400">
-            Column sorting, per-column filters and global search on top of the
-            virtualized body for large datasets.
+            Virtualized analytical grid with column sorting, per-column filters,
+            global search and a subtle motion layer powered by Framer Motion.
           </p>
         </div>
 
@@ -72,7 +78,7 @@ export function DataGrid() {
           </>
         )}
       </div>
-    </section>
+    </motion.section>
   );
 }
 

@@ -1,4 +1,7 @@
+// src/components/layout/AppShell.tsx
 import type { ReactNode } from "react";
+import { motion } from "framer-motion";
+import { createMotionTransition } from "../../features/datagrid/config/motionSettings";
 
 type AppShellProps = {
   header: ReactNode;
@@ -6,6 +9,11 @@ type AppShellProps = {
   sidePanel?: ReactNode;
   children: ReactNode;
 };
+
+const MAIN_TRANSITION = createMotionTransition("medium");
+const SIDE_PANEL_TRANSITION = createMotionTransition("medium", {
+  emphasized: true,
+});
 
 export function AppShell({ header, footer, sidePanel, children }: AppShellProps) {
   return (
@@ -15,14 +23,24 @@ export function AppShell({ header, footer, sidePanel, children }: AppShellProps)
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <main className="flex-1 overflow-auto px-4 py-4">
+        <motion.main
+          className="flex-1 overflow-auto px-4 py-4"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={MAIN_TRANSITION}
+        >
           {children}
-        </main>
+        </motion.main>
 
         {sidePanel && (
-          <aside className="hidden xl:block w-80 border-l border-slate-800 bg-slate-950/80 backdrop-blur-md">
+          <motion.aside
+            className="hidden xl:block w-80 border-l border-slate-800 bg-slate-950/80 backdrop-blur-md"
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={SIDE_PANEL_TRANSITION}
+          >
             {sidePanel}
-          </aside>
+          </motion.aside>
         )}
       </div>
 

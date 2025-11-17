@@ -1,3 +1,12 @@
+// src/components/layout/SidePanel.tsx
+import { motion } from "framer-motion";
+import {
+  createMotionTransition,
+  MOTION_ELEVATION_TRANSLATE_Y,
+} from "../../features/datagrid/config/motionSettings";
+
+const CARD_HOVER_TRANSITION = createMotionTransition("fast");
+
 export function SidePanel() {
   return (
     <div className="h-full flex flex-col px-4 py-4 gap-4 text-sm text-slate-200">
@@ -11,7 +20,14 @@ export function SidePanel() {
         </p>
       </div>
 
-      <div className="rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2">
+      <motion.div
+        className="rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2"
+        whileHover={{
+          y: MOTION_ELEVATION_TRANSLATE_Y,
+          scale: 1.01,
+        }}
+        transition={CARD_HOVER_TRANSITION}
+      >
         <h3 className="text-xs font-semibold text-slate-300">
           Selection summary (stub)
         </h3>
@@ -19,9 +35,16 @@ export function SidePanel() {
           No rows selected. Row detail view and metrics will be implemented when
           selection logic lands.
         </p>
-      </div>
+      </motion.div>
 
-      <div className="rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2">
+      <motion.div
+        className="rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2"
+        whileHover={{
+          y: MOTION_ELEVATION_TRANSLATE_Y,
+          scale: 1.01,
+        }}
+        transition={CARD_HOVER_TRANSITION}
+      >
         <h3 className="text-xs font-semibold text-slate-300">
           Keyboard shortcuts (preview)
         </h3>
@@ -38,7 +61,7 @@ export function SidePanel() {
             select all
           </li>
         </ul>
-      </div>
+      </motion.div>
     </div>
   );
 }
