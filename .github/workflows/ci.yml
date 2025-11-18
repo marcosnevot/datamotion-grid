@@ -46,11 +46,11 @@ jobs:
 
       - name: Run tests (Node 18)
         if: matrix.node-version == 18
-        run: npm run test
+        run: npm run test:ci
 
       - name: Run tests with coverage (Node 20)
         if: matrix.node-version == 20
-        run: npm run test -- --coverage
+        run: npm run test:ci:coverage
 
       - name: Upload coverage report (Node 20)
         if: matrix.node-version == 20 && (success() || failure())
@@ -62,3 +62,4 @@ jobs:
 
       - name: Build
         run: npm run build
+

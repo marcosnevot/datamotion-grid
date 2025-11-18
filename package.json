@@ -10,7 +10,9 @@
     "test": "vitest",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx --report-unused-disable-directives --max-warnings=0",
     "format": "prettier --write .",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:ci": "vitest run",
+    "test:ci:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",
