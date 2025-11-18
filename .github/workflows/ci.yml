@@ -44,11 +44,16 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Run tests with coverage
+      - name: Run tests (Node 18)
+        if: matrix.node-version == 18
+        run: npm run test
+
+      - name: Run tests with coverage (Node 20)
+        if: matrix.node-version == 20
         run: npm run test -- --coverage
 
-      - name: Upload coverage report
-        if: success() || failure()
+      - name: Upload coverage report (Node 20)
+        if: matrix.node-version == 20 && (success() || failure())
         uses: actions/upload-artifact@v4
         with:
           name: coverage-node-${{ matrix.node-version }}
