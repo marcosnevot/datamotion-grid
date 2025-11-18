@@ -345,6 +345,5 @@ Posibles mejoras futuras (fuera del alcance actual):
 
 Este proyecto está pensado principalmente como pieza de aprendizaje y portfolio.
 
-La licencia recomendada para uso público es **MIT**. Al publicar este repositorio
-como open source, añade un archivo `LICENSE` con el texto estándar de la licencia MIT
-para que otras personas puedan reutilizar y adaptar el código con confianza.
+Este proyecto está licenciado bajo la **Licencia MIT**.  
+Consulta el archivo [LICENSE](./LICENSE) para ver el texto completo.
