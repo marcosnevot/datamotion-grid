@@ -17,11 +17,6 @@ jobs:
     name: Lint, test, coverage and build
     runs-on: ubuntu-latest
 
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [18, 20]
-
     env:
       CI: true
 
@@ -29,10 +24,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js ${{ matrix.node-version }}
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 20
           cache: npm
 
       - name: Install dependencies
@@ -44,22 +39,16 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Run tests (Node 18)
-        if: matrix.node-version == 18
-        run: npm run test:ci
-
-      - name: Run tests with coverage (Node 20)
-        if: matrix.node-version == 20
+      - name: Run tests with coverage
         run: npm run test:ci:coverage
 
-      - name: Upload coverage report (Node 20)
-        if: matrix.node-version == 20 && (success() || failure())
+      - name: Upload coverage report
+        if: success() || failure()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-node-${{ matrix.node-version }}
+          name: coverage-node-20
           path: coverage
           if-no-files-found: ignore
 
       - name: Build
         run: npm run build
-
