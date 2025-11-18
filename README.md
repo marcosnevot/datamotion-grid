@@ -345,6 +345,5 @@ Possible future enhancements (beyond the current scope):
 
 This project is intended primarily as a learning and portfolio piece.
 
-The recommended license for public use is **MIT**. When publishing this repository
-as open source, add a `LICENSE` file with the standard MIT License text so that
-others can confidently reuse and adapt the code.
+This project is licensed under the **MIT License**.  
+See the [LICENSE](./LICENSE) file for the full text.
