@@ -68,7 +68,7 @@ describe('ColumnOrderingPanel', () => {
         const initialOrder = useGridStore.getState().columnOrder;
         const secondId = initialOrder[1];
 
-        // Botón "Move name up" (segunda columna en el orden por defecto)
+        // "Move name up" button (second column in the default order)
         const moveNameUpButton = screen.getByRole('button', {
             name: /move name up/i,
         });
@@ -77,14 +77,14 @@ describe('ColumnOrderingPanel', () => {
 
         const nextOrder = useGridStore.getState().columnOrder;
 
-        // El id que estaba en la posición 1 debería haber subido a la 0
+        // The ID that was in position 1 should have moved up to position 0.
         expect(nextOrder[0]).toBe(secondId);
     });
 
     it('reset button restores default order after reordering', () => {
         render(<ColumnOrderingPanel />);
 
-        // Reordenamos algo primero con "Move id down"
+        // We reorder something first with "Move id down"
         const moveIdDownButton = screen.getByRole('button', {
             name: /move id down/i,
         });
@@ -93,14 +93,14 @@ describe('ColumnOrderingPanel', () => {
         const changedOrder = useGridStore.getState().columnOrder;
         expect(changedOrder).not.toEqual(defaultOrder);
 
-        // Botón Reset (dentro del propio panel de orden)
+        // Reset button (inside the command panel itself)
         const resetButton = screen.getByRole('button', { name: /reset/i });
         fireEvent.click(resetButton);
 
         const finalOrder = useGridStore.getState().columnOrder;
 
-        // En este proyecto, "orden por defecto" se representa como array vacío
-        // (la tabla interpreta [] como "usa el orden natural de columnas").
+        // In this project, "default order" is represented as an empty array.
+        // (the table interprets [] as "use the natural column order").
         expect(finalOrder).toEqual([]);
     });
 

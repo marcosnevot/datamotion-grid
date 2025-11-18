@@ -9,7 +9,7 @@ import { gridColumns } from '../../features/datagrid/config/columnsDefinition';
 
 describe('ColumnVisibilityPanel', () => {
   beforeEach(() => {
-    // Estado base razonable: todas visibles, sin tocar el resto del store
+    // Reasonable baseline state: all visible, without affecting the rest of the store
     const allVisible: ColumnVisibilityState = {};
     for (const col of gridColumns) {
       allVisible[col.id] = true;
@@ -49,7 +49,7 @@ describe('ColumnVisibilityPanel', () => {
   });
 
   it('does not allow hiding the last visible column', () => {
-    // Forzamos un estado donde sólo "id" está visible
+    // We force a state where only "id" is visible
     useGridStore.setState((state) => ({
       ...state,
       columnVisibility: {
@@ -76,7 +76,7 @@ describe('ColumnVisibilityPanel', () => {
   });
 
   it('reset button restores default visibility state', () => {
-    // Ocultamos una columna antes de renderizar
+    // We hide a column before rendering
     useGridStore.setState((state) => ({
       ...state,
       columnVisibility: {
@@ -92,7 +92,7 @@ describe('ColumnVisibilityPanel', () => {
     ) as HTMLInputElement;
     expect(emailCheckbox.checked).toBe(false);
 
-    // Hay dos botones "Reset" (header y otro extra), usamos el primero (cabecera)
+    // There are two "Reset" buttons (header and an extra one), we use the first one (header)
     const [headerResetButton] = screen.getAllByRole('button', {
       name: /reset/i,
     });

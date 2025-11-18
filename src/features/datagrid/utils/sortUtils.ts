@@ -94,7 +94,7 @@ export const sortByStatus: SortingFn<GridRow> = (rowA, rowB, columnId) => {
 };
 
 /**
- * Date ascending sort; Invalid values ​​go to the end.
+ * Date ascending sort; Invalid values go to the end.
  */
 export const sortByDate: SortingFn<GridRow> = (rowA, rowB, columnId) => {
   const a = toTimestampSafe(rowA.getValue(columnId));

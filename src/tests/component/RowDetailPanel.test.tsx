@@ -70,8 +70,7 @@ describe('RowDetailPanel', () => {
     };
 
     render(<RowDetailPanel selectedRowInfo={info} />);
-
-    // Resumen tipo "3 rows selected"
+    
     expect(screen.getByText(/3.*selected/i)).toBeInTheDocument();
   });
 });

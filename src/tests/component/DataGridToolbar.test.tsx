@@ -51,13 +51,13 @@ describe('DataGridToolbar', () => {
       /search in name, email, country/i,
     );
 
-    // Al escribir, primero solo cambia el estado local (searchText)
+    // When typing, only the local state (searchText) changes first.
     fireEvent.change(searchInput, { target: { value: 'alice' } });
 
-    // Todavía no debería haberse aplicado al store por el debounce
+    // It shouldn't have been applied to the store yet due to the debounce.
     expect(useGridStore.getState().globalFilter).toBe('');
 
-    // Esperamos a que el debounce de 300ms actualice el store
+    // We're waiting for the 300ms debounce update to come to the store.
     await waitFor(
       () => {
         expect(useGridStore.getState().globalFilter).toBe('alice');
@@ -77,7 +77,7 @@ describe('DataGridToolbar', () => {
   });
 
   it('clears globalFilter and columnFilters when clicking clear filters', () => {
-    // Preparamos el store con filtros activos
+    // We prepared the store with active filters.
     useGridStore.setState((state) => ({
       ...state,
       globalFilter: 'pending',
@@ -93,7 +93,7 @@ describe('DataGridToolbar', () => {
       name: /clear filters/i,
     });
 
-    // Con filtros activos el botón debe estar habilitado
+    // With filters active, the button should be enabled.
     expect(clearButton).not.toBeDisabled();
 
     fireEvent.click(clearButton);
@@ -154,7 +154,7 @@ describe('DataGridToolbar', () => {
     const secondViewId = PREDEFINED_VIEWS[1]?.id;
     expect(secondViewId).toBeDefined();
 
-    // Esperar a que el efecto de bootstrap haya inicializado las vistas en el store
+    // Wait for the Bootstrap effect to initialize the views in the store
     await waitFor(() => {
       expect(useGridStore.getState().views.length).toBeGreaterThan(1);
     });

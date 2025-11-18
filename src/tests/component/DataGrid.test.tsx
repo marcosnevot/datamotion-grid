@@ -14,21 +14,21 @@ describe('DataGrid', () => {
     it('renders table with toolbar, stats bar and header filters', async () => {
         render(<DataGrid />);
 
-        // Tabla principal
+        // Main table
         const table = await screen.findByRole('table');
         expect(table).toBeInTheDocument();
 
-        // Toolbar: búsqueda global
+        // Toolbar: global search
         const searchInput = screen.getByPlaceholderText(
             /search in name, email, country/i,
         );
         expect(searchInput).toBeInTheDocument();
 
-        // Stats bar: texto "Showing X ..."
+        // Stats bar: text "Showing X ..."
         const stats = screen.getByText(/showing/i);
         expect(stats).toBeInTheDocument();
 
-        // Cabecera con filtros: al menos un textbox en el thead
+        // Header with filters: at least one textbox in the thread
         const headerRowGroups = screen.getAllByRole('rowgroup');
         const thead = headerRowGroups[0];
         const headerTextInputs = within(thead).getAllByRole('textbox');
@@ -38,17 +38,17 @@ describe('DataGrid', () => {
     it('applies a text column filter and updates filtered rows count in stats bar', async () => {
         render(<DataGrid />);
 
-        // Texto inicial de la stats bar
+        // Initial text of the stats bar
         const statsBefore = await screen.findByText(/showing .* rows/i);
         const textBefore = statsBefore.textContent;
 
         const table = await screen.findByRole('table');
 
-        // Primer input de texto dentro de la tabla (fila de filtros, por ejemplo "name")
+        // First text input within the table (filter row, for example "name")
         const textInputsInTable = within(table).getAllByRole('textbox');
         const nameFilterInput = textInputsInTable[0];
 
-        // Aplicamos un filtro que casi seguro reducirá las filas visibles
+        // We applied a filter that will almost certainly reduce the visible rows.
         fireEvent.change(nameFilterInput, { target: { value: 'zzzzzz' } });
 
         await waitFor(() => {
@@ -63,12 +63,12 @@ describe('DataGrid', () => {
         const idHeader = await screen.findByRole('columnheader', { name: /id/i });
         const sortButton = within(idHeader).getByRole('button', { name: /id/i });
 
-        // Sin orden inicial
+        // No initial order
         expect(idHeader.getAttribute('aria-sort')).toBeNull();
 
         let firstSortValue: string | null = null;
 
-        // Primer click: debe aparecer algún valor válido
+        // First click: a valid value must appear
         fireEvent.click(sortButton);
 
         await waitFor(() => {
@@ -77,7 +77,7 @@ describe('DataGrid', () => {
             firstSortValue = current;
         });
 
-        // Segundo click: debe cambiar el valor
+        // Second click: you must change the value
         fireEvent.click(sortButton);
 
         await waitFor(() => {
