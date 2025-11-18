@@ -75,7 +75,7 @@ export function DataGrid({ onSelectionChange }: DataGridProps) {
 
             <div
               ref={scrollContainerRef}
-              className="max-h-[calc(100vh-260px)] overflow-auto"
+              className="max-h-[calc(100vh-300px)] overflow-auto"
             >
               <table className="min-w-full text-left text-sm" role="table">
                 <DataGridHeader table={table} />

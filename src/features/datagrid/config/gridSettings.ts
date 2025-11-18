@@ -10,7 +10,7 @@ export const DEFAULT_ROW_HEIGHT = 40;
  * Number of extra rows to render above and below the viewport
  * to keep scroll feeling smooth while still limiting DOM nodes.
  */
-export const VIRTUALIZED_OVERSCAN = 8;
+export const VIRTUALIZED_OVERSCAN = 10;
 
 /**
  * Upper bound for demo datasets in the grid.

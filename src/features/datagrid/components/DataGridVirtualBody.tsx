@@ -25,6 +25,11 @@ export function DataGridVirtualBody({
     getScrollElement: () => scrollContainerRef.current,
     estimateSize: () => DEFAULT_ROW_HEIGHT,
     overscan: VIRTUALIZED_OVERSCAN,
+    getItemKey: (index) => {
+      // Use TanStack Table row id when available to keep measurements stable
+      const row = rows[index];
+      return row ? row.id : index;
+    },
   });
 
   const virtualItems = rowVirtualizer.getVirtualItems();

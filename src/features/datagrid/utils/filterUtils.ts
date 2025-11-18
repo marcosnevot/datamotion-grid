@@ -69,7 +69,7 @@ export const equalsString: FilterFn<GridRow> = (
 
 /**
  * "Value is in array" filter, pensado para selects multi-valor.
- * Si el array está vacío o no hay filtro, no filtra nada.
+ * If the array is empty or there is no filter, it does not filter anything.
  */
 export const inArray: FilterFn<GridRow> = (row, columnId, filterValue) => {
   if (filterValue == null) {
@@ -87,7 +87,7 @@ export const inArray: FilterFn<GridRow> = (row, columnId, filterValue) => {
 
 /**
  * Numeric "greater or equal" filter (>=).
- * Si el filtro no es numérico, se interpreta como "sin filtro".
+ * If the filter is not numeric, it is interpreted as "no filter".
  */
 export const numberGreaterOrEqual: FilterFn<GridRow> = (
   row,
@@ -101,7 +101,7 @@ export const numberGreaterOrEqual: FilterFn<GridRow> = (
 
   const value = getCellNumber(row, columnId);
   if (Number.isNaN(value)) {
-    // Si el dato no es numérico, no pasa el filtro.
+    // If the data is not numeric, it does not pass the filter.
     return false;
   }
 

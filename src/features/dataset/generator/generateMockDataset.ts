@@ -14,7 +14,7 @@ import {
 } from './mockDataConfig';
 
 function createRng(seed: number) {
-  // Simple LCG, determinista y suficiente para el mock
+  // Simple LCG, deterministic and sufficient for mocking
   let state = seed >>> 0;
   const A = 1664525;
   const C = 1013904223;
@@ -44,7 +44,7 @@ export function generateMockDataset(
 ): DatasetRow[] {
   const rnd = createRng(seed);
   const rows: DatasetRow[] = [];
-  const maxDaysOffset = 365 * 3; // ~3 años
+  const maxDaysOffset = 365 * 3; // ~3 years
 
   for (let i = 0; i < rowCount; i += 1) {
     const firstName = pick(FIRST_NAMES, rnd);

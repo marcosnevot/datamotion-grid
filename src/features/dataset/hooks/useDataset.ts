@@ -24,7 +24,7 @@ export interface UseDatasetResult {
 
 /**
  * useDataset
- * Encapsulates dataset retrieval (mock in Phase 2).
+ * Encapsulates dataset retrieval.
  * Later we can switch to a real fetch without touching consumers.
  */
 export function useDataset(options?: UseDatasetOptions): UseDatasetResult {

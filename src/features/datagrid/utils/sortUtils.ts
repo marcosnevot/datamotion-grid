@@ -41,7 +41,7 @@ const statusRank = (value: unknown): number => {
 
 /**
  * Generic numeric ascending sort.
- * NaN se considera "mayor" que cualquier número válido (va al final).
+ * NaN is considered "greater" than any valid number (it goes at the end).
  */
 export const sortByNumber: SortingFn<GridRow> = (rowA, rowB, columnId) => {
   const a = toNumberSafe(rowA.getValue(columnId));
@@ -81,7 +81,7 @@ export const sortByString: SortingFn<GridRow> = (rowA, rowB, columnId) => {
 };
 
 /**
- * Custom sort for status: Active < Pending < Inactive < (otros/undefined).
+ * Custom sort for status: Active < Pending < Inactive < (others/undefined).
  */
 export const sortByStatus: SortingFn<GridRow> = (rowA, rowB, columnId) => {
   const aRank = statusRank(rowA.getValue(columnId));
@@ -94,7 +94,7 @@ export const sortByStatus: SortingFn<GridRow> = (rowA, rowB, columnId) => {
 };
 
 /**
- * Date ascending sort; valores inválidos van al final.
+ * Date ascending sort; Invalid values ​​go to the end.
  */
 export const sortByDate: SortingFn<GridRow> = (rowA, rowB, columnId) => {
   const a = toTimestampSafe(rowA.getValue(columnId));

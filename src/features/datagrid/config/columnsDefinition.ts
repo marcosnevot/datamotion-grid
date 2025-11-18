@@ -105,10 +105,10 @@ export const gridColumns: GridColumnDef[] = [
     meta: {
       label: 'Created at',
       align: 'left',
-      filterType: 'date', // preparado para futuros filtros por fecha
+      filterType: 'date', 
     },
     enableSorting: true,
-    enableColumnFilter: false, // filtro de fecha se activará en otra fase
+    enableColumnFilter: false, 
     enableGlobalFilter: false,
     sortingFn: sortByDate,
   },

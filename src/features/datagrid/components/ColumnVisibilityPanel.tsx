@@ -39,7 +39,7 @@ export const ColumnVisibilityPanel: React.FC<ColumnVisibilityPanelProps> = () =>
     const value = columnVisibility[columnId];
     const isVisible = value !== false;
 
-    // Nunca permitir 0 columnas visibles
+    // Never allow 0 columns visible
     if (isVisible && visibleCount <= 1) {
       return;
     }
