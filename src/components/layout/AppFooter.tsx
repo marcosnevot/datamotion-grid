@@ -5,7 +5,10 @@ function useFpsMeter() {
   const [fps, setFps] = useState<number | null>(null);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.requestAnimationFrame === 'undefined') {
+    if (
+      typeof window === 'undefined' ||
+      typeof window.requestAnimationFrame === 'undefined'
+    ) {
       return;
     }
 
@@ -42,12 +45,25 @@ export function AppFooter() {
 
   return (
     <div className="flex items-center justify-between px-4 py-2 text-xs text-slate-500">
-      <span>DataMotion Grid · Internal prototype</span>
+      <span className="hidden sm:inline">
+        DataMotion Grid · React · TypeScript · TanStack Table · TanStack Virtual ·
+        Zustand · Tailwind · Framer Motion
+      </span>
+      <span className="inline sm:hidden">DataMotion Grid · Virtualized grid</span>
 
       <div className="flex items-center gap-4">
-        <span>Phase 6 – testing, performance and cleanup</span>
+        <span className="hidden md:inline">
+          Virtualized analytics grid demo · Up to 50k rows
+        </span>
 
-        <div className="hidden items-center gap-2 rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-300 sm:flex">
+        <div
+          className="hidden items-center gap-2 rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-300 sm:flex"
+          aria-label={
+            fps !== null
+              ? `Approximate frame rate ${fps} frames per second`
+              : 'Measuring frame rate'
+          }
+        >
           <span className="font-mono text-[10px] text-slate-400">Perf</span>
           <span className="h-3 w-px bg-slate-700" aria-hidden="true" />
           <span>
@@ -56,9 +72,7 @@ export function AppFooter() {
               {fps !== null ? fps : 'measuring…'}
             </span>
           </span>
-          <span className="hidden md:inline">
-            · Virtualized rows up to 50k
-          </span>
+          <span className="hidden md:inline">· Virtualized up to 50k rows</span>
         </div>
       </div>
     </div>

@@ -14,15 +14,17 @@ export function AppHeader() {
             DataMotion Grid
           </span>
           <span className="text-xs text-slate-400">
-            Phase 6 – testing, performance and cleanup
+            Virtualized React data grid focused on performance and UX
           </span>
         </div>
       </div>
 
       <div className="flex items-center gap-3">
         <span className="hidden text-xs text-slate-400 sm:inline">
-          Build status:{' '}
-          <span className="text-emerald-400">Phase 6 (stable)</span>
+          Status:{' '}
+          <span className="text-emerald-400">
+            Stable demo · 5k–50k rows
+          </span>
         </span>
 
         <ThemeToggle />

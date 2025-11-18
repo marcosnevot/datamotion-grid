@@ -1,17 +1,52 @@
 # DataMotion Grid – Performance Notes
 
-## Scope of Phase 2
+These notes describe how DataMotion Grid approaches performance from Phase 2 to Phase 6.
+The focus is on keeping a **smooth, responsive, virtualized grid** for tens of thousands
+of rows, while still supporting rich interactions and motion.
 
-Phase 2 focuses on:
+The document is written for developers who want to understand:
 
-- Generating a large in-memory mock dataset (20k–50k rows).
-- Wiring TanStack Table as the core table model.
-- Adding a virtualized body using TanStack Virtual to keep scrolling smooth.
-- Introducing a minimal performance measurement utility to track synchronous work.
+- Where the main performance costs live.
+- Which knobs can be tuned safely (row count, overscan, motion).
+- How to profile the grid locally.
 
-No client-side sorting, filtering, global search or column configuration is implemented in this phase. Those concerns are intentionally deferred to later phases.
 
-## Dataset generation
+## 1. Performance model at a glance
+
+At the end of Phase 6, the grid behaves as follows:
+
+- **Dataset**
+  - Fully in-memory, deterministic mock dataset (default ~20k rows, tested up to 50k).
+  - O(N) generation cost, measured with a small helper (`measureSync`).
+
+- **Table model**
+  - Built with **TanStack Table** on top of the dataset.
+  - Sorting, per-column filters and global search are pure transforms over the current row model.
+
+- **Virtualization**
+  - Implemented with **TanStack Virtual** in `DataGridVirtualBody`.
+  - Fixed estimated row height (`DEFAULT_ROW_HEIGHT = 40`) and bounded overscan (`VIRTUALIZED_OVERSCAN = 8`).
+  - DOM always contains only the visible rows plus overscan, regardless of total row count.
+
+- **State & interactions**
+  - All interactive state (sorting, filters, search, columns, selection, views, persistence)
+    lives in a small **Zustand** store (`gridStore`).
+  - Components subscribe to the slices they need; derived row models stay inside TanStack Table.
+
+- **Motion**
+  - **Framer Motion** adds subtle animations on layout and rows using GPU‑friendly properties
+    (`opacity`, `transform`).
+  - Motion is globally configured via `MotionConfig` and respects `prefers-reduced-motion`.
+
+- **Instrumentation**
+  - `measureSync` for timing synchronous work (e.g. dataset generation).
+  - Tunable virtualization parameters in `gridSettings.ts`.
+  - An approximate FPS/perf panel in the footer for quick visual checks.
+
+
+---
+
+## 2. Dataset generation (Phase 2 foundation)
 
 The mock dataset is defined under `src/features/dataset/`:
 
@@ -21,17 +56,27 @@ The mock dataset is defined under `src/features/dataset/`:
   - Deterministic pseudo-random generator using a simple LCG.
   - Sequential `id` starting at `1`.
   - Bounded numeric field `amount` between `AMOUNT_MIN` and `AMOUNT_MAX`.
-  - ISO-8601 `createdAt` timestamps derived from a fixed base date.
+  - ISO-8601 `createdAt` timestamps derived from a fixed base date over ~3 years.
 
-### Complexity
+### 2.1 Complexity
 
-Dataset generation is O(N) in both time and memory, where N is `rowCount`.
+Dataset generation is **O(N)** in both time and memory, where `N` is `rowCount`:
 
-- There is a single pass through the loop.
-- No expensive operations like regex backtracking on large strings or nested loops over N.
-- The generator is pure and synchronous, making it easy to benchmark.
+- Single loop over `N` rows.
+- No nested loops or expensive operations on each row.
+- The generator is **pure and synchronous**, making it easy to benchmark.
 
-## Table model
+In practice:
+
+- Default dataset sizes around **20k rows** are generated quickly on modern hardware.
+- The implementation has been tested up to **50k rows** as an upper bound for the demo.
+
+
+---
+
+## 3. Table model & virtualized rendering (Phase 2 baseline)
+
+### 3.1 Table model
 
 The table model lives in `src/features/datagrid/`:
 
@@ -39,352 +84,355 @@ The table model lives in `src/features/datagrid/`:
 - `config/columnsDefinition.ts` defines `gridColumns` as `ColumnDef<GridRow>[]`.
 - `hooks/useDataGrid.ts` wires:
   - `useDataset` as the data source.
-  - `useReactTable` with `getCoreRowModel`, without sorting or filtering.
+  - `useReactTable` with `getCoreRowModel` and, in later phases, sorting and filtering.
 
-The table model is created synchronously from the in-memory array. For the Phase 2 dataset sizes (20k–50k rows), this remains acceptable, especially combined with the virtualized rendering.
+The table is created **synchronously** from the in-memory array. For the Phase 2 and final
+dataset sizes (20k–50k rows), this remains acceptable when combined with virtualized
+rendering.
 
-## Virtualized rendering
+### 3.2 Virtualized rendering
 
-Virtualized rendering is implemented in:
+Virtualization is implemented across:
 
 - `config/gridSettings.ts`
-  - `DEFAULT_ROW_HEIGHT`
-  - `VIRTUALIZED_OVERSCAN`
+  - `DEFAULT_ROW_HEIGHT = 40`
+  - `VIRTUALIZED_OVERSCAN = 8`
+  - `MAX_ROWS = 50_000` (demo upper bound).
 - `utils/virtualizationUtils.ts`
-  - Helpers for basic height calculations and styles.
+  - Helpers for estimated heights and styles.
 - `components/DataGridVirtualBody.tsx`
   - Integrates `useVirtualizer` from `@tanstack/react-virtual`.
-  - Renders only the visible rows plus an overscan buffer.
+  - Renders only visible rows plus overscan and two padding rows.
 - `components/DataGrid.tsx`
   - Provides the scroll container (`div` with `overflow-auto`).
   - Renders the table header.
   - Delegates the `<tbody>` to `DataGridVirtualBody`.
 
-### Behaviour
+#### 3.2.1 Behaviour
 
-- The scroll container is constrained with `max-height` relative to `100vh`, so only the grid area scrolls and the rest of the layout remains stable.
+- The scroll container is constrained with `max-height` relative to `100vh`, so only the
+  grid area scrolls and the rest of the layout remains stable.
 - The header row uses `position: sticky` within the scroll container.
-- Rows above and below the viewport are represented by padding rows, which keeps the semantics of a `<table>` without using absolutely positioned row wrappers.
+- Rows above and below the viewport are represented by a **top padding row** and a
+  **bottom padding row**, keeping a semantic `<table>` structure.
 
-This approach substantially reduces the number of DOM nodes rendered at any time and keeps scroll performance smooth for large datasets.
+This approach drastically reduces the number of real `<tr>` nodes mounted at any time
+and keeps scroll performance smooth for large datasets.
 
-## Performance measurement
-
-A small helper lives in `src/utils/performance.ts`:
-
-- `measureSync(label, fn, { log })` wraps a synchronous function and returns:
-  - `result`: the function result.
-  - `sample`: `{ label, durationMs }`.
-
-In Phase 2 it is used in `useDataset`:
-
-- The dataset generation (`generateMockDataset`) is measured.
-- When `debugPerformance` is true, the helper logs a line to `console.debug` in the form:
-
-[perf] dataset:generateMockDataset: XX.XXms
-
-The helper is intentionally generic so it can be reused later for other synchronous operations (e.g. table model creation or client-side transforms).
-
-## Debug flags
-
-`src/features/datagrid/config/gridSettings.ts` exposes:
-
-- `ENABLE_DEBUG_MEASURES` – when set to `true`, `useDataGrid` will pass `debugPerformance: true` to `useDataset`, enabling console logging of generation time.
-
-The default value is `false` to avoid noisy logs in normal development runs. It can be toggled locally when investigating performance.
-
-## Known limitations in Phase 2
-
-- All data is generated in-memory on the client; there is no streaming, pagination or server-side push.
-- Table model creation is synchronous and runs on the main thread.
-- There is no memoization of derived views beyond what TanStack Table provides internally.
-- Virtualization assumes a reasonably consistent row height (`DEFAULT_ROW_HEIGHT`); pathological row content that doubles or triples the height is not targeted in this phase.
-
-These trade-offs are acceptable for the goals of Phase 2 and will be revisited in later phases if needed (for example, when adding more complex cell renderers, selection, or expensive client-side transforms).
 
 ---
 
-## Phase 3 – Client-side interactions (sorting, filtering, search)
+## 4. Client-side interactions (Phase 3 – sorting, filtering, search)
 
-Phase 3 adds client-side interactions on top of the virtualized grid. The main performance concern is to keep these operations cheap even with 20k+ rows.
+Phase 3 adds client-side interactions on top of the virtualized grid. The main goal is
+to keep these operations cheap even with 20k+ rows.
 
-### Sorting and filtering cost
+### 4.1 Sorting and filtering cost
 
 - Sorting, filtering and global search are handled by **TanStack Table**:
-  - Sorting and filtering run on the **in-memory dataset** (`GridRow[]`).
+  - All operations run on the **in-memory dataset** (`GridRow[]`).
   - The virtualized body (`DataGridVirtualBody`) continues to render only the visible rows.
+
 - Key properties:
   - Sorting and filtering are **pure, synchronous transforms** over the current row model.
-  - There is no additional network I/O or asynchronous work introduced in Phase 3.
-- Design guidelines:
-  - Keep filter predicates simple and linear:
+  - No additional network I/O is introduced in this phase.
+
+- Design guidelines for filters:
+  - Use simple, linear predicates:
     - Case-insensitive “contains” checks for text fields.
     - Direct comparisons for numeric and date fields.
-  - Avoid expensive operations inside filter functions (e.g. RegExp construction per row).
-  - Prefer pre-normalization in the dataset layer if future requirements demand heavier transforms.
+  - Avoid expensive operations inside filter functions, especially:
+    - Creating regex instances per row.
+    - Heavy string manipulation.
+  - Prefer pre-normalisation in the dataset layer if future requirements demand more
+    complex transforms.
 
-### Global search (debounced)
+### 4.2 Debounced global search
 
-- Global search is debounced (~300 ms) via `useDebouncedValue`:
-  - Reduces the number of times the table state is recomputed while typing.
-  - Keeps typing latency low even with a large dataset.
-- The debounced value is the only one passed to `setGlobalFilter`:
-  - The grid does **not** recompute on every keystroke.
-  - The perceived responsiveness is bound to the debounce interval, not to row count.
+Global search is debounced via `useDebouncedValue` (around **300 ms** by default):
 
-### State management and re-renders
+- Reduces how often the table state is recomputed while typing.
+- Keeps typing latency low, even with tens of thousands of rows.
 
-- `gridStore` (Zustand) acts as the single source of truth for:
+Only the **debounced** value is passed to `setGlobalFilter`:
+
+- The grid does *not* recompute on every keystroke.
+- Perceived responsiveness depends more on the debounce interval than on row count.
+
+### 4.3 State management and re-renders
+
+- `gridStore` (Zustand) is the single source of truth for:
   - `sorting`, `columnFilters`, `globalFilter`.
-- Performance considerations:
-  - Components subscribe only to the slices of state they need.
-  - Derived state (filtered and sorted rows) lives inside TanStack Table, not in React component state.
-  - The virtualized body receives a stable `table` instance and only re-renders the rows that TanStack Table exposes as visible.
+- Components subscribe only to the slices of state they need.
+- Derived row models (sorted/filtered rows) live inside TanStack Table.
+- The virtualized body receives a stable `table` instance and only re-renders the
+  **visible rows**.
 
-### Interaction patterns and perceived performance
+### 4.4 Interaction patterns and perceived performance
 
-- All grid interactions (sorting, filtering, search) are **instant**, without loading spinners or overlays.
-- The stats bar (`DataGridStatsBar`) provides immediate feedback about:
+- Grid interactions (sorting, filtering, search) are designed to be **instant**, without
+  loading spinners or blocking overlays.
+- The stats bar (`DataGridStatsBar`) provides immediate feedback:
   - Visible vs total row counts.
   - Number of active filters and sorted columns.
-- These textual cues help users understand what is happening without requiring extra visual effects that could hurt performance.
+- Textual cues help users understand what is happening without heavy visual effects
+  that could impact performance.
+
 
 ---
 
-## Phase 4 – Motion performance and virtualized grids
+## 5. Motion performance and virtualized grids (Phase 4)
 
-Phase 4 introduces Framer Motion for microinteractions. The primary performance goal is to ensure that **animations never degrade scroll performance or interaction latency**.
+Phase 4 introduces Framer Motion for microinteractions while ensuring that
+**animations do not degrade scroll performance or interaction latency**.
 
-### Motion tokens and reduced-motion
+### 5.1 Motion tokens and reduced-motion
 
-- Motion configuration is centralized in `motionSettings.ts`:
-  - Duration tokens (`fast`, `medium`, `slow`) keep animations short by default.
-  - Easing curves are shared across components, avoiding ad-hoc timings.
+- Motion configuration lives in `motionSettings.ts`:
+  - Duration tokens (`fast`, `medium`, `slow`) keep animations short and consistent.
+  - Shared easing curves avoid ad‑hoc timings.
 - `MotionConfig` in `App.tsx`:
-  - Reads `prefers-reduced-motion` and configures Framer Motion globally.
+  - Reads `prefers-reduced-motion`.
   - When reduced motion is requested:
-    - Transitions effectively become zero-duration.
-    - Visual effects are minimized without changing functional behavior.
+    - Transitions become effectively zero-duration.
+    - Visual effects are minimised without changing functional behaviour.
 
-This ensures there is no need to sprinkle `matchMedia` checks across components, reducing the risk of inconsistent behavior.
+This keeps `matchMedia` checks out of individual components and reduces the risk of
+inconsistent behaviour.
 
-### Safe properties and layout stability
+### 5.2 Safe properties and layout stability
 
-- Only **GPU-friendly** properties are animated:
-  - `opacity`
-  - `transform` (`translateY`, small `scale` changes in some cards)
-- The following are intentionally **not** animated:
-  - Row height, padding or margins that would affect virtualizer measurements.
-  - Scroll position or any scroll-linked effects.
+Only **GPU-friendly** properties are animated:
 
-This keeps the table layout stable and prevents jank when scrolling through a large number of virtualized rows.
+- `opacity`
+- `transform` (`translateY`, small `scale` changes) 
 
-### Virtualization compatibility
+Intentionally **not** animated:
 
-- `DataGridVirtualBody` continues to own:
+- Row height, padding or margins that would affect virtualizer measurements.
+- Scroll position or any scroll-linked effects.
+
+This keeps the table layout stable and prevents jank when scrolling through a large
+number of virtualized rows.
+
+### 5.3 Virtualization compatibility
+
+- `DataGridVirtualBody` owns:
   - The `<tbody>` element.
-  - Padding rows used to simulate off-screen content.
-- Each visible row is rendered via `DataGridRow`:
-  - `DataGridRow` wraps the row in `motion.tr` and only animates **hover** using a small `translateY`.
-  - There is no animation tied to scroll events; hover is purely pointer-driven.
-- As a result:
-  - The number of animated elements equals the number of visible rows (plus overscan), not the total dataset.
-  - The virtualizer remains the only authority for which rows are mounted/unmounted.
+  - The padding rows used to simulate off‑screen content.
+- Each visible row is rendered by `DataGridRow`:
+  - `DataGridRow` wraps the `<tr>` in `motion.tr`.
+  - Only hover state uses a small `translateY` / elevation effect.
+  - No animation is tied directly to scroll events.
 
-### Scope of animations vs cost
+As a result:
 
-- Animations are applied to:
-  - Layout shell (`AppShell`, `SidePanel`) on initial mount.
-  - Grid container (`DataGrid` section).
-  - Toolbar and stats bar (`DataGridToolbar`, `DataGridStatsBar`).
-  - Header row (`DataGridHeader`) and sort icons.
-  - Visible rows (`DataGridRow`) on hover.
-- Notably **excluded** from animation:
-  - Continuous transitions on scroll.
-  - Bulk animations over all rows when filters or sorting change.
-- The visual result:
-  - Perceived smoothness and polish improve.
-  - CPU/GPU overhead stays bounded and independent from dataset size.
+- The number of animated elements equals the number of visible rows (plus overscan),
+  not the total dataset.
+- The virtualizer remains the only authority on which rows are mounted or unmounted.
 
-### Debugging and tuning motion
+### 5.4 Scope of animations vs cost
+
+Animations are applied to:
+
+- Layout shell (`AppShell`, `SidePanel`) on initial mount.
+- Grid container (`DataGrid` section).
+- Toolbar and stats bar (`DataGridToolbar`, `DataGridStatsBar`).
+- Header row (`DataGridHeader`) and sort icons.
+- Visible rows (`DataGridRow`) on hover.
+
+Explicitly **excluded**:
+
+- Continuous transitions while scrolling.
+- Bulk animations across all rows when filters or sorting change.
+
+This keeps CPU/GPU overhead bounded and **independent** from dataset size.
+
+### 5.5 Debugging and tuning motion
 
 - Motion tokens in `motionSettings.ts` act as a single control point:
-  - If performance issues are detected on low-end devices, durations or elevation offsets can be adjusted in one place.
-  - Additional flags (e.g. a “disable motion” debug flag) can be wired later without touching individual components.
-- Combined with existing performance helpers (`measureSync`) and debug flags for dataset generation, this allows:
+  - If issues appear on low-end devices, durations or elevation offsets can be tweaked
+    in one place.
+  - A “disable motion” debug flag can be added centrally if needed.
+- Combined with existing performance helpers (`measureSync`) and debug flags for
+  dataset generation, this allows:
   - Isolating pure computation costs (dataset, table model).
-  - Separately tuning the perceived latency from animations and microinteractions.
+  - Separately tuning perceived latency from animations and microinteractions.
+
 
 ---
 
-## Phase 5 – State complexity, selection & persistence
+## 6. State complexity, selection & persistence (Phase 5)
 
-Phase 5 adds new capabilities to the grid (column configuration, selection,
-views, and lightweight persistence) with the explicit goal of **not degrading
-the performance** achieved in earlier phases.
+Phase 5 adds richer state (column configuration, selection, views and persistence)
+with the explicit goal of **not degrading** performance.
 
-### 5.1. Cost model of the new state
+### 6.1 Cost model of the new state
 
-The new state slices (`columnVisibility`, `columnOrder`, `rowSelection`, `views`)
-are designed to be lightweight:
+New state slices are kept small and bounded:
 
-- **`columnVisibility` and `columnOrder`**
-  - Their size is bounded by the number of columns, not the number of rows.
-  - Typical operations (`toggle`, `moveColumn`, `reset`) are at most O(n_columns).
-  - Changes in visibility or order only trigger re-renders of the header and the
-    affected cells, keeping full compatibility with virtualization.
+- **`columnVisibility` / `columnOrder`**
+  - Size is bounded by the number of columns, not rows.
+  - Toggling or reordering columns is at most O(n_columns).
+  - Only headers and affected cells re-render; virtualization remains intact.
 
 - **`rowSelection`**
   - Stored as a `rowId → boolean` map, without duplicating row data.
-  - Aggregates used in `RowDetailPanel` (sum of `amount`, status counters, etc.)
-    are computed only over selected rows, which in practice tend to be few
-    compared to the total dataset.
-  - The cost of updating `rowSelection` when clicking a row is O(1) in the
-    current single-select mode.
+  - Aggregates in `RowDetailPanel` (sum of `amount`, status counts, etc.) are computed
+    only over selected rows, which are typically few.
+  - Per-row selection updates are effectively O(1) in the current single-select mode.
 
 - **`views`**
-  - The number of predefined views is small and bounded.
-  - Applying a view means copying a few configuration arrays (sorting, filters,
-    visibility, order), not touching the full dataset.
+  - Small, bounded list of predefined views.
+  - Applying a view copies a few configuration arrays (sorting, filters, visibility,
+    order), without touching the dataset itself.
 
-### 5.2. Interaction with virtualization
+### 6.2 Interaction with virtualization
 
-The Phase 5 design decisions keep the same principles introduced in Phase 4:
+The Phase 5 design keeps virtualization as the primary performance lever:
 
-- **Row virtualization** remains responsible for limiting the number of real DOM
-  nodes.
-- Row selection does not add uncontrolled per-row listeners:
-  - The logic is concentrated in `DataGridRow`, which is only instantiated for
-    visible rows + overscan.
-- Changes in column visibility/order:
-  - Do not destroy the entire table; this is delegated to TanStack Table, which
-    is already optimized to update the affected headers and cells.
+- Row virtualization remains responsible for limiting the number of DOM nodes.
+- Row selection logic lives in `DataGridRow`, instantiated only for visible rows and
+  overscan.
+- Changes in column visibility/order are handled by TanStack Table, which already
+  optimises header and cell updates.
 
-In manual tests with ~20k rows, scrolling remains smooth, and selection
-operations, view changes, and column toggling do not introduce perceptible
-stutters on reasonable desktop hardware.
+In manual tests with ~20k rows:
 
-### 5.3. Local storage and snapshot size
+- Scrolling remains smooth.
+- Selection, view changes and column toggling do not introduce perceptible stutters on
+  typical desktop hardware.
 
-Persistence in `localStorage` is limited to the **grid configuration**, not the
-dataset:
+### 6.3 Local storage and snapshot size
 
-- The snapshot includes:
+Persistence via `localStorage` is strictly limited to **grid configuration**, never
+the dataset:
+
+- Snapshot includes:
   - `columnVisibility`
   - `columnOrder`
   - `views`
   - `activeViewId`
-- The size of the resulting JSON is small compared to any real dataset, so:
-  - `JSON.stringify` / `JSON.parse` operations are cheap.
-  - Reads/writes to `localStorage` do not happen in a critical render path (they
-    are done in React effects, reacting to configuration changes).
+- The resulting JSON is small and cheap to `JSON.stringify` / `JSON.parse`.
+- Reads and writes occur in React effects, not on critical render paths.
 
-Additionally:
+The persistence logic is **tolerant to schema changes**:
 
-- The load logic is version-tolerant:
-  - If a `GridColumnId` appears that no longer exists in the current
-    configuration, it is ignored.
-  - If the snapshot is corrupted, it safely falls back to the grid defaults.
+- If a `GridColumnId` no longer exists, it is ignored.
+- If the snapshot is missing or corrupted, the grid falls back to defaults.
 
-### 5.4. Performance guardrails for future phases
+### 6.4 Performance guardrails for richer state
 
-To maintain performance in later phases, it is recommended to:
+To keep performance stable as features grow:
 
-- Avoid deriving heavy data directly during render when it can be **memoized** or
-  computed only when selection changes.
-- Keep persistence focused on **config**, not on large volumes of data.
-- Continue using Framer Motion only on cheap properties (`opacity`, `transform`)
-  in new interactions related to selection or views.
+- Avoid deriving heavy data directly in render; prefer memoization or recompute only
+  when relevant slices (e.g. selection) change.
+- Keep persistence focused on **lightweight config**, not large data dumps.
+- Continue using Framer Motion only on cheap properties (`opacity`, `transform`) for
+  new interactions.
 
-With these guardrails, the additional complexity introduced in Phase 5 remains
-controlled and compatible with the goal of a **massive, smooth, and responsive**
-grid.
 
 ---
 
-## Phase 6 – Performance measurements & decisions
+## 7. Performance measurements & decisions (Phase 6)
 
-This phase focused on validating that the existing virtualization strategy scales to large datasets and on applying small, targeted optimizations without changing the overall UX.
+Phase 6 validates that the virtualization strategy scales to large datasets and
+applies small, **targeted optimisations** without changing UX.
 
-### Virtualization configuration (final for Phase 6)
+### 7.1 Virtualization configuration (final for Phase 6)
 
-The grid continues to rely on TanStack Virtual for row virtualization, with the following configuration:
+- `DEFAULT_ROW_HEIGHT = 40`
+  - Base estimate for all virtual rows.
+  - Matches the current visual density and keeps scroll physics predictable.
 
-- `DEFAULT_ROW_HEIGHT = 40`  
-  - Used as the base estimate for all virtual rows.
-  - Keeps the scroll physics predictable and matches the current visual density of the table.
+- `VIRTUALIZED_OVERSCAN = 8`
+  - Extra rows rendered above and below the viewport.
+  - Balances smooth scrolling with a low DOM node count.
 
-- `VIRTUALIZED_OVERSCAN = 8`  
-  - Number of extra rows rendered above and below the viewport.
-  - Chosen as a balance between:
-    - Smooth scrolling (no visible “hole” while flinging).
-    - Keeping the DOM node count low even with 20k–50k rows.
-
-- `MAX_ROWS = 50_000`  
+- `MAX_ROWS = 50_000`
   - Upper bound for demo datasets.
-  - The generator can technically go beyond this, but the grid is optimised and tested around this range.
+  - Implementation can go beyond this, but tuning and testing focus on this range.
 
-The virtualized body (`DataGridVirtualBody`) still renders only:
+`DataGridVirtualBody` still renders only:
 
 - One padding row at the top.
 - The visible virtual rows.
 - One padding row at the bottom.
 
-No changes were made to row heights or the basic virtualization strategy in Phase 6.
+No changes were made to row heights or to the fundamental virtualization strategy.
 
-### Dataset generation & measurement
+### 7.2 Dataset generation & measurement
 
-The dataset is still generated entirely on the client:
+The dataset remains client-generated:
 
 - `generateMockDataset(rowCount, seed)`:
   - Deterministic pseudo-random generator (`DATASET_SEED`).
   - ~3 years of dates for `createdAt`.
   - Bounded numeric range for `amount`.
 
-- `useDataset` wraps the generator with a small measurement helper:
-  - Uses `measureSync('dataset:generateMockDataset', fn, { log: debugPerformance })`.
-  - When `ENABLE_DEBUG_MEASURES` is `true`, the duration is logged via `console.debug`.
+- `useDataset` wraps the generator with `measureSync`:
+  - `measureSync('dataset:generateMockDataset', fn, { log: debugPerformance })`.
+  - When `ENABLE_DEBUG_MEASURES` is `true`, a log like  
+    `[perf] dataset:generateMockDataset: XX.XXms`  
+    is printed via `console.debug`.
 
-This allows developers to quickly check how dataset size impacts generation time without introducing heavy tooling.
+This allows quick, local checks of how dataset size impacts generation time without
+adding heavy tooling.
 
-### Memoization strategy
+### 7.3 Memoization strategy
 
-Phase 6 introduced a few targeted memoization improvements:
+Phase 6 introduces a few targeted memoization improvements:
 
-- `useDataGrid`:
-  - Already memoises:
+- **`useDataGrid`**:
+  - Memoises:
     - `allColumnIds` derived from `gridColumns`.
-    - `resolvedColumnVisibility` (column IDs are validated and unknown keys are dropped).
-    - `resolvedColumnOrder` (normalised and completed with any missing IDs).
-  - These `useMemo` calls were kept as-is and considered sufficient for the table-level configuration.
+    - `resolvedColumnVisibility` (unknown column IDs dropped).
+    - `resolvedColumnOrder` (normalised and completed with missing IDs).
+  - These `useMemo` calls are sufficient and deliberately limited.
 
-- `DataGridRow`:
-  - The row click handler is now wrapped in `useCallback`, with dependencies on:
+- **`DataGridRow`**:
+  - Row click handler wrapped in `useCallback` with dependencies:
     - `isSelected`
     - `row`
     - `table`
-  - This avoids recreating the handler on every render and keeps React’s diffing simpler when large parts of the table re-render.
+  - Reduces handler churn and simplifies diffing when many rows re-render.
 
-- `DataGridCell`:
-  - The component is now exported as `memo(DataGridCellComponent)`.
-  - This prevents unnecessary re-renders of individual cells when:
-    - Their `children` and `className` props do not change.
-    - The parent row re-renders due to selection changes or virtual index updates.
-  - Framer Motion is still used for subtle opacity/translate animations, but memoisation ensures we do not animate more cells than necessary.
+- **`DataGridCell`**:
+  - Exported as `memo(DataGridCellComponent)`.
+  - Skips re-renders when `children` and `className` props are unchanged.
+  - Still uses Framer Motion for small opacity/translate animations, but only when
+    necessary.
 
-The general rule for Phase 6 was:
+General rule for Phase 6:
 
-> Only add `React.memo`, `useMemo` or `useCallback` where profiling or reasoning shows a real benefit, and avoid premature optimisation.
+> Only add `React.memo`, `useMemo` or `useCallback` where profiling or reasoning 
+> shows a real benefit, and avoid premature optimisation.
 
-### Measuring performance as a developer
+### 7.4 FPS / perf panel
 
-To reproduce and validate performance locally:
+A small FPS/perf indicator lives in the footer (`AppFooter`):
 
-1. **Run the app in development mode**  
-   - `npm run dev`  
+- Uses `requestAnimationFrame` to compute an **approximate** FPS.
+- Displays a compact “FPS / perf” readout.
+- Intended as a **visual canary** for regressions, not as a precision benchmark.
+
+For serious profiling, the recommended tools remain:
+
+- React DevTools Profiler.
+- The browser’s Performance panel.
+
+
+---
+
+## 8. How to profile the grid locally
+
+To reproduce and validate performance on your own machine:
+
+1. **Run the app in development mode**
+   - `npm run dev`
    - Open the app in the browser.
 
-2. **Use the React DevTools Profiler**  
+2. **Use React DevTools Profiler**
    - Start a profiling session.
    - Interact with the grid:
      - Scroll quickly with a large dataset.
@@ -393,9 +441,9 @@ To reproduce and validate performance locally:
      - Select and deselect rows.
    - Stop the recording and inspect:
      - Which components re-render.
-     - How long renders take in ms.
+     - How long each commit takes (ms).
 
-3. **Use the browser Performance panel**  
+3. **Use the browser Performance panel**
    - Record while:
      - Flinging the scroll with ~20k+ rows.
      - Typing into the global search.
@@ -403,19 +451,28 @@ To reproduce and validate performance locally:
      - Long tasks on the main thread.
      - Layout/paint spikes.
 
-4. **Optional: enable debug timings for dataset generation**  
+4. **Optionally enable debug timings for dataset generation**
    - Set `ENABLE_DEBUG_MEASURES = true` in `gridSettings.ts` (for local development).
    - Reload the app.
-   - Check the console for `[perf] dataset:generateMockDataset: X ms` logs.
+   - Watch the console for logs like:  
+     `[perf] dataset:generateMockDataset: X ms`.
 
-### Future performance improvements (beyond Phase 6)
-
-Ideas explicitly left out of Phase 6 but worth exploring later:
-
-- More granular memoisation for heavy cells (e.g. expensive formatting or visualisations).
-- Measuring and optimising for extremely large datasets (100k+ rows) if needed.
-- Automated performance regression tests (e.g. via custom scripts or browser automation + metrics).
-- Exposing a small “FPS / perf” panel in the UI that surfaces basic runtime metrics for demo purposes.
 
 ---
 
+## 9. Future performance work (beyond Phase 6)
+
+The current implementation already meets the goals of a **high-performance,
+virtualized demo grid**. Potential future improvements include:
+
+- More granular memoisation for **heavy cells** (expensive formatting or embedded
+  visualisations).
+- Measuring and tuning for **extremely large datasets** (100k+ rows or more) if a
+  future use case requires it.
+- Automated **performance regression tests** using browser automation and custom
+  metrics.
+- Expanding the FPS/perf panel into a small, optional **runtime metrics widget**
+  (e.g. showing average render time, number of visible rows).
+
+These ideas are deliberately out of scope for Phase 6 and Phase 7 but can be
+explored later without changing the core architecture.

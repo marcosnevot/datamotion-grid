@@ -21,7 +21,7 @@ export function SidePanel({ selectedRowInfo }: SidePanelProps) {
           Grid insight panel
         </h2>
         <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
-          Live row details and keyboard shortcuts for the virtualized grid.
+          Live row details and keyboard shortcuts for the virtualized data grid.
         </p>
       </div>
 
@@ -45,24 +45,24 @@ export function SidePanel({ selectedRowInfo }: SidePanelProps) {
             <span className="font-mono text-slate-800 dark:text-slate-300">
               F
             </span>{' '}
-            Focus search
+            Focus global search
           </li>
           <li>
             <span className="font-mono text-slate-800 dark:text-slate-300">
               Alt + C
             </span>{' '}
-            Toggle column panel
+            Toggle column configuration panel
           </li>
           <li>
             <span className="font-mono text-slate-800 dark:text-slate-300">
               Alt + 1 / 2 / 3
             </span>{' '}
-            Apply preset views
+            Apply preset views (Default / Active only / High amount)
           </li>
         </ul>
         <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-500">
-          Advanced keyboard navigation (arrow keys, bulk selection…) will be
-          introduced in the future.
+          Advanced keyboard navigation (arrow keys, range selection, bulk actions) is
+          not implemented yet and may be added in future iterations.
         </p>
       </motion.div>
     </div>

@@ -35,8 +35,10 @@ describe('SidePanel', () => {
     ).toBeInTheDocument();
 
     // Keyboard shortcuts list
-    expect(screen.getByText(/focus search/i)).toBeInTheDocument();
-    expect(screen.getByText(/toggle column panel/i)).toBeInTheDocument();
+    expect(screen.getByText(/focus global search/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/toggle column configuration panel/i),
+    ).toBeInTheDocument();
     expect(screen.getByText(/apply preset views/i)).toBeInTheDocument();
   });
 

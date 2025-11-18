@@ -1,437 +1,528 @@
-# DataMotion Grid – UX Guidelines (Draft)
+# DataMotion Grid – UX Guidelines
 
-This document describes UX and interaction patterns for the DataMotion Grid.
+This document describes the UX and interaction patterns of **DataMotion Grid** at the
+end of Phase 6. It is aimed at developers and designers who want to understand how
+the grid should feel and behave, beyond the raw implementation details.
 
-Planned topics:
+The focus is on:
 
-- Layout: header, toolbar, stats bar, data grid, side panel, footer.
-- Microinteractions and animations (hover, selection, theme switching).
-- Accessibility and keyboard navigation principles.
+- Layout and mental model of the application.
+- Grid interactions (sorting, filters, search, stats).
+- Column configuration, selection and saved views.
+- Animations and microinteractions with Framer Motion.
+- Accessibility, keyboard navigation and discoverability.
+- UX impact of performance optimisations.
+
+
+## 1. UX principles
+
+DataMotion Grid is designed as a **high‑density analytical grid**, not a minimal CRUD
+table. The main UX principles are:
+
+- **Clarity over flashiness**  
+  Motion, color and typography support comprehension; they never replace clear
+  structure or text.
+
+- **Responsiveness at scale**  
+  The grid must remain responsive with **tens of thousands of rows**. Any UX pattern
+  that conflicts with smooth scrolling or quick interactions is avoided.
+
+- **Predictable interactions**  
+  Sorting, filtering and configuration follow stable, repeatable patterns. Users
+  should be able to guess what will happen before clicking.
+
+- **Accessible by default**  
+  Keyboard navigation, focus order and ARIA attributes are part of the UX contract,
+  not an afterthought.
+
+- **Respect for user preferences**  
+  Motion respects `prefers-reduced-motion`. Theme respects the user’s chosen
+  light/dark/system preference.
+
+
+## 2. Layout and mental model
+
+### 2.1 Application layout
+
+The app is structured as a single, focused page built by `AppShell`:
+
+- **Header (`AppHeader`)**
+  - Shows the project name and short description.
+  - Hosts global controls such as the **theme toggle**.
+
+- **Main content**
+  - Left side: virtualized data grid.
+  - Right side: `SidePanel` with row details and helper content (including
+    keyboard shortcuts).
+
+- **Footer (`AppFooter`)**
+  - Shows technology stack labels.
+  - Includes a compact FPS / perf indicator to signal performance regressions
+    without being distracting.
+
+Only the grid area scrolls; header, side panel and footer remain visually stable.
+
+
+### 2.2 Grid structure
+
+Inside the main content, the grid is composed of:
+
+- **Toolbar (`DataGridToolbar`)**
+  - Global search.
+  - “Clear filters” action.
+  - Entry points for column configuration and views.
+
+- **Header (`DataGridHeader`)**
+  - Column headers with sort affordances.
+  - Second row of per‑column filters.
+
+- **Stats bar (`DataGridStatsBar`)**
+  - Shows visible vs total rows.
+  - Shows counts of active filters and sorted columns.
+
+- **Virtualized body (`DataGridVirtualBody`)**
+  - Scrollable table body with virtualized rows.
+
+- **Side panel (`SidePanel` + `RowDetailPanel`)**
+  - Shows state‑aware content based on current selection and shortcuts.
+
 
 ---
 
-## Phase 3 – Grid interactions (sorting, filtering, search)
+## 3. Phase 3 – Grid interactions (sorting, filtering, search)
 
-Phase 3 transforms the grid from a read-only virtualized table into an interactive analytical grid. The main UX goals:
+Phase 3 turns the grid into an interactive analytical surface. The primary UX goal
+is to make state changes **discoverable and reversible** while keeping interactions
+smooth with large datasets.
 
-- Make sorting and filtering **discoverable** and **predictable**.
-- Keep the grid **fast and responsive** even with 20k rows.
-- Provide **continuous feedback** about the current state (filters, sorting, visible rows).
 
-### Sorting UX
+### 3.1 Sorting UX
 
-- Column headers are clickable to control sorting:
-  - Click 1 → apply sorting.
-  - Click 2 → reverse sorting.
-  - Click 3 → remove sorting (back to unsorted).
-- Each sortable column shows a small icon next to the label:
-  - `▲` for ascending.
-  - `▼` for descending.
-  - `▽` when not sorted.
-- The `<th>` elements expose `aria-sort` (`ascending`, `descending`, or no attribute) so screen readers can understand the current sort state.
-- Sorting should:
-  - Never trigger a full page refresh.
-  - Feel instant even on 20k rows (TanStack Table + virtualized body).
-  - Be reversible and easy to reset via `resetSorting()` in the grid store (wireable to future UI controls).
+- **Interaction**
+  - Clicking a sortable column header cycles the sort state:
+    1. Not sorted → ascending
+    2. Ascending → descending
+    3. Descending → not sorted
+  - Sorting is **local** to the grid (no page reloads).
 
-### Column filters UX
+- **Affordances**
+  - Each sortable header shows a small sort indicator next to the label:
+    - Up arrow for ascending.
+    - Down arrow for descending.
+    - A neutral icon or subtle hint when unsorted.
+  - The header visually distinguishes sortable columns from non‑sortable ones
+    (e.g. via hover state and cursor).
 
-- Filters are always visible in a second row under the main header. This is an analytical grid, not a minimal CRUD table.
-- Filter types:
-  - **Text filters** for `name`, `email`, `country`:
-    - Small inputs with placeholder `Filter...`.
-    - Case-insensitive “contains” match.
-  - **Select filter** for `status`:
-    - Options: `All`, `Active`, `Pending`, `Inactive`.
-    - Clear separation between “no filter” (`All`) and an active filter.
-  - **Numeric filter** for `amount`:
-    - Single input representing a minimum amount (`Min`).
-    - Accepts both numeric and string input; invalid values are treated as “no filter”.
-  - **Date filter** (if enabled for date columns):
-    - Standard date input (`type="date"`).
-    - Interpreted as “on or after” the selected date.
-- Filters react immediately when the user changes a control:
-  - No extra “Apply” button in Phase 3.
-  - The stats bar updates in sync (see below).
+- **Accessibility**
+  - Headers expose `aria-sort="ascending"` or `"descending"` as appropriate.
+  - When unsorted, the attribute is omitted.
 
-### Global search UX
+- **Reset**
+  - Sorting can be cleared:
+    - Per column, by cycling through the states with additional clicks.
+    - Globally, via a `resetSorting` action in the store (exposed in the UI
+      where appropriate in later phases).
 
-- A single global search input lives in `DataGridToolbar`, above the grid.
+
+### 3.2 Column filters UX
+
+This grid favours **always‑visible** column filters for analytical workflows.
+
+- Filters appear in a **second row of the header**, directly under the column
+  labels.
+
+- **Filter types**
+  - Text filters (e.g. for `name`, `email`, `country`):
+    - Small input with placeholder like `Filter…`.
+    - Case‑insensitive “contains” behaviour.
+  - Select filter for `status`:
+    - Options include an “all” state and concrete statuses such as `Active`,
+      `Pending`, `Inactive`.
+    - Clear separation between “no filter” and an active filter.
+  - Numeric filter (e.g. `amount`):
+    - Single input representing a minimum amount.
+    - Invalid values fall back to “no filter” semantics.
+  - Date filter (if enabled):
+    - Uses an HTML date input.
+    - Interpreted as “on or after” the chosen date.
+
+- **Behaviour**
+  - Filters apply **immediately** when values change; there is no separate
+    “Apply” button.
+  - The stats bar updates in sync to show `Showing X of Y rows` and the current
+    filter count.
+
+
+### 3.3 Global search UX
+
+- The **global search** input lives in `DataGridToolbar`, above the header.
 - Scope:
-  - Searches across multiple columns (`name`, `email`, `country`).
-  - Case-insensitive “contains” match.
+  - Searches across multiple key columns (e.g. `name`, `email`, `country`).
+  - Case‑insensitive “contains” matching.
 - Debounce:
-  - Uses a debounced value (~300ms) to avoid recomputing on every keystroke.
-  - Typing should feel responsive; filtering should not stutter even with 20k rows.
-- Copy:
-  - Placeholder: `Search in name, email, country…`.
-  - `aria-label` matches the placeholder for accessibility.
+  - Uses a debounced value (around **300 ms**) to avoid recomputing on every
+    keystroke.
+  - Typing remains snappy, and filtering does not stutter even for ~20k rows.
+- Copy & accessibility:
+  - Placeholder describes the scope, e.g.
+    `Search in name, email, country…`.
+  - `aria-label` mirrors this description for screen readers.
 
-### Clear filters UX
 
-- A “Clear filters” button is always visible in the toolbar.
-- Disabled when:
-  - There is no global search text.
-  - There are no active column filters.
+### 3.4 “Clear filters” UX
+
+- A **“Clear filters”** button is permanently visible in the toolbar.
+- Disabled state:
+  - Disabled when **both**:
+    - No global search text is present.
+    - No column filters are active.
 - When enabled and clicked:
-  - Clears `globalFilter`.
-  - Clears all `columnFilters`.
-  - Does **not** touch sorting in Phase 3 (sorting has its own reset via `resetSorting()`).
-- The stats bar immediately reflects the reset state:
-  - `Showing Y rows`
-  - `Filters: none`
-  - `Sorting: …` remains whatever the current sorting state is.
+  - Clears the global search term.
+  - Clears all column filters.
+  - Does **not** reset sorting in this phase; sorting can be reset independently.
+- The stats bar immediately reflects the cleared state.
 
-### Stats bar UX
 
-- `DataGridStatsBar` provides at-a-glance information about the grid state:
-  - `Showing X rows` when no filters are applied.
-  - `Showing X of Y rows` when filters or search are active.
-  - `Filters: N` (0 → show `Filters: none`).
-  - `Sorting: none` or `Sorting: 1 column` / `Sorting: N columns`.
-- Placement:
-  - Sits between the toolbar and the table.
-  - Always visible without scrolling the grid body.
-- The numbers must always reflect the **current row model** of TanStack Table:
-  - `X` comes from `table.getRowModel().rows.length`.
-  - `Y` is the total dataset count from `useDataGrid`.
+### 3.5 Stats bar UX
 
-### Performance and responsiveness
+`DataGridStatsBar` surfaces current grid state in a compact summary:
 
-- All interactions (sorting, filtering, search) must remain smooth with 20k rows:
-  - Sorting and filtering are computed by TanStack Table before virtualization.
-  - The virtual body (`DataGridVirtualBody`) only renders visible rows.
-- UI guidelines:
-  - No blocking spinners or overlays for sorting/filtering.
-  - Avoid heavy re-renders by keeping state in `gridStore` and passing only the TanStack `table` instance down to components.
+- Row counts:
+  - `Showing X rows` when no filters/search are applied.
+  - `Showing X of Y rows` when there is any active search or filter.
+- Filters:
+  - Shows `Filters: none` when no filters are active.
+  - Shows `Filters: N` when one or more filters are applied.
+- Sorting:
+  - Shows `Sorting: none` or `Sorting: 1 column` / `Sorting: N columns`.
 
-### Accessibility and keyboard UX (Phase 3 scope)
+Placement and behaviour:
 
-- The grid region is announced via `aria-label="Data grid"` on the `<section>`.
-- Sorting state is exposed via `aria-sort` on `<th>` elements.
-- Inputs and controls:
-  - Search and filter inputs must have clear placeholders.
-  - Global search uses `aria-label` describing its scope.
-  - The “Clear filters” button uses a concise text label and is disabled when no action is available.
-- Keyboard:
-  - Standard browser focus order:
-    - Global search → Clear filters → header cells / filter inputs → grid body.
-  - Filter and search inputs are regular `<input>`/`<select>` elements, so default keyboard behavior (Tab, Shift+Tab, typing, etc.) just works.
-- Future phases may extend keyboard support with:
-  - Arrow-key navigation between cells.
-  - Shortcut to focus the global search.
-  - Shortcut to clear filters/sorting.
+- The stats bar appears **between** the toolbar and the table.
+- It remains visible while scrolling the grid body.
+- All values are derived from:
+  - TanStack Table row model for `X`.
+  - Dataset size from `useDataset` for `Y`.
+
+
+### 3.6 Performance & responsiveness
+
+- Sorting, filtering and search always run **client‑side** on the in‑memory
+  dataset.
+- TanStack Table computes the row model; `DataGridVirtualBody` then renders
+  only the visible rows.
+- UX guidelines:
+  - No loading spinners or blocking overlays for these operations.
+  - Use subtle textual feedback (stats bar) instead of heavy animations.
+
 
 ---
 
-## Phase 4 – Animations & microinteractions (Framer Motion)
+## 4. Phase 4 – Animations & microinteractions (Framer Motion)
 
-Phase 4 focuses on **visual feedback** without altering the functional behavior of the grid. Animations must enhance comprehension, not draw attention to themselves.
+Phase 4 introduces motion to make the interface feel more alive, without changing
+semantics or sacrificing performance.
 
-### Design principles
 
-- Animate only **cheap properties**:
-  - `opacity` and `transform` (e.g. translate, scale).
-- Keep durations short:
-  - Typically between **150–220 ms** (`fast` / `medium` motion tokens).
-- Avoid continuous or scroll-driven animations:
-  - Animations should respond to **discrete user actions** (hover, sort, filter, initial load).
-- No animation should block interaction:
-  - The grid remains fully usable while animations run.
-- All motion is gated by:
-  - `prefers-reduced-motion` (system setting).
-  - Shared motion tokens (`MOTION_DURATIONS`, easing curves, elevation offset).
+### 4.1 Design principles
 
-### Layout & shell animations
+- Animate only **cheap properties** (`opacity`, `transform`).
+- Prefer short durations (typically **150–220 ms**).
+- Avoid scroll‑linked or continuous animations.
+- No animation may block or delay user input.
+- Respect `prefers-reduced-motion` globally.
 
-- **Main content (`AppShell` / page body)**:
-  - On initial load, the main content fades in and moves gently from below:
-    - Opacity: `0 → 1`.
-    - Vertical offset: `8px → 0`.
-  - This happens **once on page mount**, not on every re-render.
-- **Side panel**:
-  - On desktop (`xl+`), the insight panel appears with:
-    - A short horizontal slide-in from the right.
-    - A subtle fade-in.
-  - The animation is subtle enough not to distract from the grid.
 
-### Grid-level microinteractions
+### 4.2 Layout and shell animations
 
-- **Grid container (`DataGrid`)**:
-  - The grid card fades in and moves slightly from below on mount.
-  - This animation should feel aligned with the main content motion but slightly lighter.
+- **Main content (`AppShell`)**
+  - On initial mount, the main content:
+    - Fades in from `opacity: 0 → 1`.
+    - Moves slightly from below (`translateY` from a small offset to `0`).
+  - Runs only **once** when the page loads, not on each re‑render.
 
-- **Row hover (`DataGridRow`)**:
+- **Side panel**
+  - On desktop layouts, the side panel appears with:
+    - A short horizontal slide‑in from the right.
+    - A subtle fade‑in.
+  - This is intentionally low‑key so that focus remains on the grid.
+
+
+### 4.3 Grid‑level microinteractions
+
+- **Grid container (`DataGrid`)**
+  - May use a light entrance animation (fade/slide‑in) aligned with the main
+    content.
+
+- **Row hover (`DataGridRow`)**
   - On desktop hover:
-    - A tiny elevation effect using `translateY` (e.g. `-2px`) and background highlight.
-    - No large scale or shadow changes; the effect should feel “crisp” and minimal.
-  - Hover is **per-row only** and does not affect virtualization behavior.
+    - Applies a small elevation effect using `translateY` and background
+      highlight.
+    - Does not significantly change size; the effect is crisp and minimal.
 
-- **Sorting feedback (`DataGridHeader`)**:
-  - Sort icons react to state changes:
-    - `none → asc → desc → none` is accompanied by a small change in position and/or opacity.
-    - The header text remains stable; only the icon animates.
-  - `aria-sort` remains the primary accessibility indicator; the animation is purely visual sugar.
+- **Sorting feedback (`DataGridHeader`)**
+  - Sort icons animate slightly when the sort state changes:
+    - Small position or opacity adjustments.
+  - The header text itself remains stable.
 
-- **Toolbar (`DataGridToolbar`)**:
-  - The toolbar appears with a short fade/slide when the grid mounts.
-  - The “Clear filters” button may use a very small scale/opacity feedback on press.
-  - Animations do not modify the timing or semantics of debounced search.
+- **Toolbar & stats (`DataGridToolbar`, `DataGridStatsBar`)**
+  - Fade/slide‑in on mount.
+  - Small, contained animations when state changes (e.g. filters count).
+  - Must not interfere with typing in the search input.
 
-- **Stats bar (`DataGridStatsBar`)**:
-  - The main label (`Showing X of Y rows`) and filter/sorting indicators transition smoothly when values change:
-    - Small vertical offset and opacity change are acceptable.
-  - Changes should feel like an update of state, not like a re-layout of the whole card.
 
-### Accessibility and reduced motion
+### 4.4 Reduced motion
 
-- The app respects `prefers-reduced-motion`:
+- `MotionConfig` reads `prefers-reduced-motion` at the top level.
+- When reduced motion is requested:
+  - Durations are collapsed towards **0 ms**.
+  - Decorative transitions (e.g. hover elevation) are minimised.
+- Components should respect this behaviour implicitly through shared motion
+  tokens; they should not replicate the media query individually unless
+  strictly necessary.
 
-  - When the system requests reduced motion:
-    - Durations are effectively reduced to **0** (or near-0).
-    - Decorative effects (elevation, icon transitions) are minimized.
-  - Global configuration ensures components do not have to reimplement the check individually, except in edge cases.
 
-- Animations never replace semantic cues:
-  - Sorting state is still expressed via `aria-sort` and visible icons.
-  - Filter and search state are still represented by text (stats bar, button states, placeholders).
+### 4.5 Virtualization‑friendly motion
 
-### Performance considerations for virtualized grids
+- Virtualization rules do **not** change:
+  - `DataGridVirtualBody` controls which rows are mounted.
+  - Only visible rows plus overscan are ever animated.
+- The motion system must **not**:
+  - Animate row height, padding or margins.
+  - Drive animations based on scroll position.
+- Row‑level animations are limited to hover/focus and small state changes,
+  not bulk transitions for all rows at once.
 
-- Virtualization rules remain unchanged:
-  - `DataGridVirtualBody` continues to render only the visible window of rows.
-- Animations **must not**:
-  - Animate row height or padding that could interfere with the virtualizer’s measurements.
-  - Trigger on every scroll frame.
-- Recommended pattern:
-  - Row-level motion responds only to **hover/focus**.
-  - Dataset changes from filters/sorting are communicated via:
-    - Light motion on the grid container or stats bar.
-    - Never by animating every row in bulk.
 
 ---
 
-## Phase 5 – UX for column configuration, selection & views
+## 5. Phase 5 – Column configuration, selection & views
 
-Phase 5 introduces “power user” features to the grid: **row selection**,  
-**column configuration (visibility & order)** and **saved views**.  
-All of them must feel consistent with the motion and visual language established  
-in previous phases (especially Phase 4).
+Phase 5 adds “power user” features while maintaining clarity and performance.
 
-### 5.1. Row selection & visual feedback
 
-#### Semantics
+### 5.1 Row selection & RowDetailPanel
 
-Current selection model is **single-select via click**:
+#### Selection model
 
-- Clicking a row:
-  - Selects that row.
-  - Clears selection for all other rows.
-- Selection state is reflected in:
-  - Row visuals (`DataGridRow`):
-    - Distinct background and outline.
-    - Subtle elevation/hover animation, consistent with Phase 4.
-  - Accessibility attributes (`aria-selected` where applicable).
-  - Side panel (`RowDetailPanel`) and optionally `DataGridStatsBar`.
+- Current model: **single selection via click**.
+- Behaviour:
+  - Clicking a row selects that row.
+  - Any previous selection is cleared.
+  - Selection state is reflected in the row visuals and ARIA attributes.
 
-The selection model is intentionally simple in Phase 5; range selection and  
-spreadsheet-like navigation are out of scope for now.
+#### Visual feedback
+
+- Selected rows:
+  - Use a distinct background and/or border.
+  - Remain visibly selected even without hover.
+- Hover and selection states compose cleanly:
+  - Hover may add a small elevation/translate effect.
+  - The selection highlight remains the primary cue.
 
 #### RowDetailPanel states
 
-`RowDetailPanel` is the main consumer of selection state and must handle three cases:
+`RowDetailPanel` adapts to the number of selected rows:
 
-1. **No selection (0 rows)**
+1. **0 rows selected**
+   - Show an explicit empty state (e.g. “No rows selected”).
+   - Provide short guidance on how to select a row.
 
-   - Show an explicit empty state, e.g. “No rows selected”.
-   - Short guidance text: explain that clicking a row will show its details.
+2. **1 row selected**
+   - Show a summary card with key fields such as:
+     - `id`, `name`, `email`, `status`, `country`, `createdAt`, `amount`.
+   - Apply formatting:
+     - `amount` as fixed decimal / currency‑like number.
+     - `status` with the same badge style used in the grid.
 
-2. **Single selection (1 row)**
+3. **N rows selected (multi‑select, if enabled later)**
+   - Summarise aggregates:
+     - Number of selected rows.
+     - Sum of `amount` over the selection.
+     - Optional breakdown by `status`.
+   - Avoid rendering a long list of individual rows in this panel.
 
-   - Show a compact but meaningful summary card:
-     - Fields: `id`, `name`, `email`, `status`, `country`, `createdAt`, `amount`.
-   - Formatting:
-     - `amount` formatted as fixed decimal / currency-like number.
-     - `status` displayed using the same badge style used elsewhere in the app.
-   - Layout:
-     - Prefer a vertical card layout with clear labels and values.
-     - Keep typography small but legible (data-dense UI).
+The current implementation focuses on single‑select, but the UX is structured so
+that multi‑select can be introduced later without redesigning the panel.
 
-3. **Multiple selection (N > 1)**
 
-   - Show a summary header like “N rows selected”.
-   - Show selection-based aggregates:
-     - Sum of `amount` for selected rows.
-     - Optional breakdown by `status` (e.g. “2 Active, 1 Inactive”).
-   - Keep the panel compact: avoid rendering huge lists of selected rows here.
+### 5.2 Column visibility panel (`ColumnVisibilityPanel`)
 
-#### Visual principles
+The column visibility panel lets users hide or show columns without changing the
+underlying dataset.
 
-- Selection highlight must **not** compromise row readability.
-- Hover and selection visual states must combine gracefully:
-  - Hover can apply a subtle translation/elevation (from Phase 4).
-  - Selection uses a background/outline color that remains visible even without hover.
-- The feature must play well with virtualization:
-  - No per-row heavy effects that depend on non-visible rows.
-  - No scroll-jumping when toggling selection.
+- **Entry point**
+  - Opened from a “Columns” control in the toolbar.
 
-### 5.2. Column visibility panel
+- **Layout & content**
+  - Appears as a small dialog anchored to the toolbar.
+  - Lists all columns defined in `columnsDefinition`:
+    - Checkbox to toggle visibility.
+    - Column label (truncated if needed).
+    - Optional hint when a column is required.
 
-The **column visibility panel** (`ColumnVisibilityPanel`) is opened from a “Columns”  
-button in the grid toolbar.
-
-#### Behavior
-
-- The panel is rendered as a small dialog anchored to the toolbar button.
-- It lists all grid columns defined in `columnsDefinition`:
-
-  - Each row in the panel contains:
-    - A checkbox for visibility.
-    - The column label (truncated if necessary).
-    - An optional hint (e.g. “required”) when the column cannot be hidden.
-
-- Safeguards:
+- **Safeguards**
   - The grid never allows **zero visible columns**.
-  - If the user attempts to hide the last visible column:
-    - The change is ignored.
-    - The checkbox remains checked and can optionally show a “required” hint.
+  - Attempts to hide the last visible column are ignored; the checkbox remains
+    checked and may show a “required” hint.
 
-- Reset button:
-  - Restores default visibility for all columns as defined in `columnsDefinition`.
-  - Should not affect sorting, filters or column order.
+- **Reset behaviour**
+  - A reset control restores the default visibility as defined in
+    `columnsDefinition`.
+  - Sorting, filters and column order remain unchanged.
 
-#### Accessibility & interaction
+- **Accessibility**
+  - The panel uses dialog semantics (`role="dialog"` with an accessible label).
+  - Each checkbox has an explicit label or `aria-label` describing the target
+    column.
+  - The panel closes via:
+    - Clicking outside.
+    - Pressing `Escape`.
+    - Activating the “Columns” trigger again.
 
-- Panel root:
-  - Exposed as `role="dialog"` with `aria-label="Column visibility configuration"`.
-- List:
-  - Uses `role="list"` / `role="listitem"` for the column entries.
-- Checkboxes:
-  - Each checkbox must have an explicit `aria-label` such as:
-    - “Toggle visibility for {column label}”.
-- The panel can be closed by:
-  - Clicking outside of it.
-  - Pressing `Escape`.
-  - Clicking the “Columns” button again.
 
-### 5.3. Column ordering panel
+### 5.3 Column ordering panel (`ColumnOrderingPanel`)
 
-The **column ordering panel** (`ColumnOrderingPanel`) allows reordering columns using  
-simple “Move up / Move down” controls instead of drag & drop.
+Column order is controlled through explicit controls rather than drag and drop.
 
-#### Layout
+- **Layout**
+  - Section title such as “Column order”.
+  - List of entries:
+    - 1‑based index.
+    - Column label.
+    - “Move up” (↑) and “Move down” (↓) buttons.
 
-- Panel section title: “Column order”.
-- A list of items, each representing a column:
+- **Behaviour**
+  - “Move up” shifts a column one position earlier in `columnOrder`.
+  - “Move down” shifts it one position later.
+  - Edge cases:
+    - First column → “Move up” disabled.
+    - Last column → “Move down” disabled.
 
-  - Displays:
-    - The current index (1‑based).
-    - The column label.
-    - Two small buttons:
-      - “↑” – move the column up.
-      - “↓” – move the column down.
+- **Reset**
+  - A reset control restores the default order from `columnsDefinition`.
+  - In this project, an **empty** `columnOrder` means “use default order”, so
+    reset sets the state back to `[]`.
 
-- Edge conditions:
-  - The **first** column item has its “Move up” button disabled.
-  - The **last** column item has its “Move down” button disabled.
+- **UX goals**
+  - Predictable and keyboard‑friendly ordering.
+  - No hidden drag‑and‑drop behaviours.
 
-#### Behavior
 
-- Clicking “Move up” moves the column one position earlier in `columnOrder`.
-- Clicking “Move down” moves it one position later.
-- Reset button:
-  - Restores the default order from `columnsDefinition`.
-  - Implementation detail: in this project, an empty `columnOrder` means
-    “use default order”, so reset sets `columnOrder` back to `[]`.
+### 5.4 Saved views (preset configurations)
 
-The intent is to keep the control **predictable and keyboard-friendly**, without the  
-overhead and complexity of drag & drop reordering.
+Phase 5 introduces predefined **views** that encapsulate common grid setups, for
+example:
 
-### 5.4. Saved views (presets)
+- `Default`
+- `Active only`
+- `High amount`
 
-Phase 5 introduces **predefined views** that bundle common grid configurations:
+These presets are defined in `viewsConfig` and referenced by `gridStore`.
 
-- Example presets:
-  - `Default`
-  - `Active only`
-  - `High amount`
+- **Toolbar UX**
+  - A `<select>` in the toolbar exposes available views.
+  - The `activeViewId` is reflected in the selected value.
+  - A placeholder such as “Custom view” is used when the current state does not
+    match any preset.
 
-These presets are defined in `viewsConfig` and stored in `gridStore`.
+- **Applying a view**
+  - When a view is chosen:
+    - Sorting, filters, global search, column visibility and order are updated
+      to match the preset.
+    - Row selection is cleared to avoid inconsistencies.
+    - The configuration is persisted in the local storage snapshot.
 
-#### UX in the toolbar
+- **Deviating from a view**
+  - After applying a view, any manual changes effectively put the grid into a
+    “custom” state.
+  - The toolbar still shows the last applied view, but it is understood that the
+    configuration has diverged.
 
-- A `<select>` in the toolbar is used to switch between preset views.
-- Behavior:
-  - The current `activeViewId` is reflected in the `<select>` value.
-  - A placeholder such as “Custom view” is shown when:
-    - No view is active.
-    - The current state no longer matches any predefined view.
 
-#### Applying a view
+### 5.5 Keyboard hints in the side panel
 
-When the user selects a view (either from the dropdown or via a keyboard shortcut):
+The `SidePanel` contains a dedicated card listing **keyboard shortcuts** relevant
+to the grid. This list must always stay in sync with:
 
-- The grid applies the view’s configuration:
-  - Sorting
-  - Column filters
-  - Global filter
-  - Column visibility
-  - Column order
-- Row selection is cleared (`clearRowSelection`) to avoid inconsistencies.
-- The change is persisted in the local storage snapshot so the view survives reloads.
+- The actual shortcuts implemented in the keyboard utilities.
+- The reference document `docs/keyboard-shortcuts.md`.
 
-If the user modifies the grid after applying a view (filters, sorting, etc.):
-
-- The grid is effectively in a “custom” state.
-- The `<select>` still shows the last preset that was applied, but:
-  - UX-wise, it is understood that the actual state is no longer identical to the preset.
-  - Future phases may add explicit support for user-defined saved views.
-
-### 5.5. Keyboard hints in the side panel
-
-The `SidePanel` includes a card dedicated to **keyboard shortcuts** that relate to  
-the grid. It must always stay in sync with the real shortcuts documented in  
-`docs/keyboard-shortcuts.md`.
-
-In Phase 5, this card typically mentions:
+Typical shortcuts include:
 
 - `F` — focus global search.
-- `Alt + C` — toggle column configuration panel.
-- `Alt + 1/2/3` — apply predefined views (Default / Active only / High amount).
+- `Alt + C` — toggle the column configuration panel.
+- `Alt + 1 / 2 / 3` — apply predefined views (Default / Active only / High amount).
 
-Whenever shortcuts change:
+Maintenance rule:
 
-1. Update the implementation in the keyboard utilities / handlers.
+1. Update handlers when shortcuts change.
 2. Update `docs/keyboard-shortcuts.md`.
-3. Update the list inside the side panel card.
+3. Update the side panel card text.
 
-This keeps discoverability high while avoiding divergence between docs, UI hints  
-and actual behavior.
 
 ---
 
-## Phase 6 – UX impact of performance optimisations
+## 6. Phase 6 – UX impact of performance optimisations
 
-The performance work in Phase 6 was intentionally designed to be invisible from a UX perspective, except for making interactions feel smoother under load.
+Phase 6 focuses on performance and stability. From a UX standpoint, the goal is
+that users should **not** notice behavioural changes, only smoother interactions.
 
 Key points:
 
-- **Virtualisation behaviour**:
-  - The row height and overscan configuration keep the scroll behaviour consistent across phases.
-  - Users should not notice any change in how the table scrolls, aside from a more stable frame rate with large datasets.
+- **Virtualisation remains stable**
+  - Row height and overscan configuration keep scroll feel consistent across
+    phases.
+  - The number of rendered rows at any time remains bounded.
 
-- **Row and cell rendering**:
-  - The introduction of `React.memo` and `useCallback` in grid rows and cells does not change what is rendered.
-  - Visual states (hover, selection, zebra striping) remain the same.
-  - Framer Motion animations still use only `opacity` and `transform` to avoid layout thrashing.
+- **Rendering optimisations are invisible**
+  - `React.memo`, `useMemo` and `useCallback` are used where they reduce work,
+    but they do not change what users see.
+  - Hover, selection and zebra striping appear the same as before.
 
-- **Loading experience**:
-  - Dataset generation is still synchronous but fast for the current dataset sizes.
-  - Optional performance logging is kept in the console only, never surfaced as noisy UI.
+- **Motion remains lightweight**
+  - Framer Motion still animates only `opacity` and `transform`.
+  - No new layout‑affecting animations are introduced.
 
-- **Accessibility**:
-  - No shortcuts or focus behaviours were changed in Phase 6.
-  - Keyboard interactions (`F`, `Alt+C`, `Alt+1..3`) continue to work as described in the keyboard shortcuts documentation.
-  - Any future “perf panel” or FPS indicator should remain purely informational and not block main workflows.
+- **Loading experience**
+  - Dataset generation is still synchronous but fast for the default dataset
+    sizes.
+  - Any debug timing is logged only in the console, never surfaced as noisy UI.
 
-Overall, Phase 6 aims to keep the UX **identical in behaviour** while improving perceived performance and preparing the codebase for any future, more advanced performance features.
+- **Accessibility & shortcuts**
+  - Focus order and keyboard shortcuts (`F`, `Alt + C`, `Alt + 1 / 2 / 3`) are
+    unchanged.
+  - Any optional performance panel remains purely informational.
+
+
+---
+
+## 7. Relationship with keyboard shortcuts documentation
+
+Detailed shortcut definitions and platform notes live in
+`docs/keyboard-shortcuts.md`.
+
+This UX guide focuses on how shortcuts are **communicated** and how they fit into
+the overall interface (e.g. side panel hints, toolbar behaviour). When shortcuts
+are added or changed, always update:
+
+1. The actual key handling logic.
+2. `docs/keyboard-shortcuts.md`.
+3. The keyboard shortcuts card in the side panel.
+
+
+---
+
+## 8. Summary
+
+In its final form at the end of Phase 6, DataMotion Grid offers:
+
+- A high‑density, virtualized analytical table that remains responsive at scale.
+- Clear, predictable interactions for sorting, filters, search and views.
+- Subtle but consistent microinteractions powered by Framer Motion.
+- A selection model that integrates tightly with the side detail panel.
+- Accessible, keyboard‑friendly workflows with documented shortcuts.
+
+These guidelines should be treated as the **source of truth** for UX decisions
+around the grid. Any new feature or refinement should be checked against these
+principles to keep the experience coherent and maintainable.

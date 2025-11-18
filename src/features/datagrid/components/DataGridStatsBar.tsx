@@ -44,6 +44,8 @@ export const DataGridStatsBar: React.FC<DataGridStatsBarProps> = ({
 
   return (
     <motion.div
+      role="status"
+      aria-live="polite"
       className="mb-2 border-b border-slate-200 bg-slate-50/80 px-3 py-2 text-[11px] text-slate-600 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-300 sm:flex sm:items-center sm:justify-between"
       initial={{ opacity: 0, y: -4 }}
       animate={{ opacity: 1, y: 0 }}
