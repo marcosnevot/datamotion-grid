@@ -8,7 +8,10 @@ import { createMotionTransition } from '../config/motionSettings';
 import { ColumnVisibilityPanel } from './ColumnVisibilityPanel';
 import type { GridViewId } from '../types/gridTypes';
 import { PREDEFINED_VIEWS, DEFAULT_VIEW_ID } from '../config/viewsConfig';
-import { isColumnPanelShortcut, getViewShortcutIndex } from '../../../utils/keyboard';
+import {
+  isColumnPanelShortcut,
+  getViewShortcutIndex,
+} from '../../../utils/keyboard';
 
 const TOOLBAR_TRANSITION = createMotionTransition('fast');
 
@@ -37,18 +40,16 @@ export const DataGridToolbar: React.FC = () => {
     setGlobalFilter(debouncedSearch);
   }, [debouncedSearch, setGlobalFilter]);
 
-  // Alt + C → toggle panel de columnas
-  // - Alt + 1/2/3... → aplicar vista por índice (PREDEFINED_VIEWS, vistas actuales, etc.)
+  // Alt + C → toggle column panel
+  // Alt + 1/2/3... → apply view by index
   useEffect(() => {
     const handleGlobalKeyDown = (event: KeyboardEvent) => {
-      // Panel de columnas
       if (isColumnPanelShortcut(event)) {
         event.preventDefault();
         setIsColumnsPanelOpen((prev) => !prev);
         return;
       }
 
-      // Cambio de vista por Alt/Cmd + número
       const viewIndex = getViewShortcutIndex(event, views.length);
       if (viewIndex !== null) {
         const targetView = views[viewIndex];
@@ -67,9 +68,7 @@ export const DataGridToolbar: React.FC = () => {
     };
   }, [views, applyView, clearRowSelection]);
 
-
-  // Bootstrap de vistas predefinidas si el store aún no tiene ninguna.
-  // Si localStorage hidrata vistas, este efecto no toca nada (views.length > 0).
+  // Bootstrap predefined views if store is empty
   useEffect(() => {
     if (views.length === 0) {
       setViews(PREDEFINED_VIEWS);
@@ -78,7 +77,7 @@ export const DataGridToolbar: React.FC = () => {
     }
   }, [views.length, setViews, applyView, clearRowSelection]);
 
-  // Cerrar panel de columnas al hacer click fuera o pulsar Escape
+  // Close columns panel on outside click / Escape
   useEffect(() => {
     if (!isColumnsPanelOpen) {
       return;
@@ -107,7 +106,7 @@ export const DataGridToolbar: React.FC = () => {
     };
   }, [isColumnsPanelOpen]);
 
-  // Atajo de teclado: F → enfocar búsqueda global
+  // Keyboard shortcut: F → focus global search
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
@@ -121,10 +120,8 @@ export const DataGridToolbar: React.FC = () => {
         tagName === 'select' ||
         active?.isContentEditable;
 
-      // No secuestrar la tecla si el usuario está escribiendo en un campo
       if (isEditable) return;
 
-      // Sólo F "sola", sin modificadores
       if (
         (event.key === 'f' || event.key === 'F') &&
         !event.altKey &&
@@ -144,7 +141,6 @@ export const DataGridToolbar: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     setSearchText(event.target.value);
   };
@@ -152,7 +148,6 @@ export const DataGridToolbar: React.FC = () => {
   const handleClearFilters = () => {
     resetFilters();
     setSearchText('');
-    // No tocamos activeViewId aquí: el usuario puede tener una vista y limpiar filtros manualmente.
   };
 
   const handleToggleColumnsPanel = () => {
@@ -176,7 +171,7 @@ export const DataGridToolbar: React.FC = () => {
 
   return (
     <motion.div
-      className="mb-2 border-b border-slate-200 pb-2 text-xs dark:border-slate-800"
+      className="mb-2 border-b border-slate-200 bg-slate-50/80 pb-2 text-xs dark:border-slate-800 dark:bg-slate-950/40"
       initial={{ opacity: 0, y: -4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={TOOLBAR_TRANSITION}
@@ -190,12 +185,12 @@ export const DataGridToolbar: React.FC = () => {
             onChange={handleSearchChange}
             placeholder="Search in name, email, country..."
             aria-label="Search in name, email, country"
-            className="w-full rounded-md border border-slate-200 bg-white/70 px-2 py-1 text-xs outline-none transition focus:ring-1 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-900/70"
+            className="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none transition focus:ring-1 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200"
           />
         </div>
 
         <div className="flex items-center justify-end gap-2">
-          {/* Selector de vistas (solo se muestra en sm+ para no romper layout en móvil) */}
+          {/* Views selector (sm+ only) */}
           <div className="hidden sm:block">
             <label htmlFor="grid-view-select" className="sr-only">
               Select grid view
@@ -204,7 +199,7 @@ export const DataGridToolbar: React.FC = () => {
               id="grid-view-select"
               value={viewSelectValue}
               onChange={handleViewChange}
-              className="inline-flex h-[28px] items-center rounded-md border border-slate-200 bg-white/80 px-2 text-[11px] font-medium text-slate-600 outline-none transition hover:bg-slate-100 focus:ring-1 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="inline-flex h-[28px] items-center rounded-md border border-slate-200 bg-white px-2 text-[11px] font-medium text-slate-600 outline-none transition hover:bg-slate-100 focus:ring-1 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               <option value="">
                 {activeView ? 'Custom view' : 'Select view'}
@@ -221,7 +216,7 @@ export const DataGridToolbar: React.FC = () => {
             type="button"
             onClick={handleClearFilters}
             disabled={isClearDisabled}
-            className="inline-flex items-center rounded-md border border-slate-200 px-2 py-1 text-[11px] font-medium text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             Clear filters
           </button>
@@ -232,7 +227,7 @@ export const DataGridToolbar: React.FC = () => {
               onClick={handleToggleColumnsPanel}
               aria-haspopup="dialog"
               aria-expanded={isColumnsPanelOpen}
-              className="inline-flex items-center rounded-md border border-slate-200 px-2 py-1 text-[11px] font-medium text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               Columns
             </button>

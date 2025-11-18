@@ -1,10 +1,6 @@
 // src/features/datagrid/store/gridStore.ts
 import { create } from 'zustand';
-import type {
-  ColumnFiltersState,
-  SortingState,
-  Updater,
-} from '@tanstack/react-table';
+import type { ColumnFiltersState, SortingState } from '@tanstack/react-table';
 import type {
   ColumnOrder,
   ColumnVisibilityState,
@@ -21,6 +17,8 @@ export interface GridStoreSnapshot {
   activeViewId: GridViewId | null;
 }
 
+type StateUpdater<T> = T | ((prev: T) => T);
+
 export type GridStoreState = {
   // Existing state
   sorting: SortingState;
@@ -35,32 +33,24 @@ export type GridStoreState = {
   activeViewId: GridViewId | null;
 
   // Existing actions
-  setSorting: (
-    updater: SortingState | ((prev: SortingState) => SortingState),
-  ) => void;
-  setColumnFilters: (
-    updater:
-      | ColumnFiltersState
-      | ((prev: ColumnFiltersState) => ColumnFiltersState),
-  ) => void;
-  setGlobalFilter: (updater: string | ((prev: string) => string)) => void;
+  setSorting: (updater: StateUpdater<SortingState>) => void;
+  setColumnFilters: (updater: StateUpdater<ColumnFiltersState>) => void;
+  setGlobalFilter: (updater: StateUpdater<string>) => void;
   resetFilters: () => void;
   resetSorting: () => void;
 
   // Column visibility actions
-  setColumnVisibility: (next: ColumnVisibilityState) => void;
+  setColumnVisibility: (updater: StateUpdater<ColumnVisibilityState>) => void;
   toggleColumnVisibility: (columnId: GridColumnId) => void;
   resetColumnVisibility: () => void;
 
   // Column ordering actions
-  setColumnOrder: (next: ColumnOrder) => void;
+  setColumnOrder: (updater: StateUpdater<ColumnOrder>) => void;
   moveColumn: (columnId: GridColumnId, targetIndex: number) => void;
   resetColumnOrder: () => void;
 
   // Row selection actions
-  setRowSelection: (
-    next: RowSelectionState | Updater<RowSelectionState>,
-  ) => void;
+  setRowSelection: (updater: StateUpdater<RowSelectionState>) => void;
   clearRowSelection: () => void;
   selectSingleRow: (rowId: string | null) => void;
   toggleRowSelection: (rowId: string) => void;
@@ -130,15 +120,22 @@ export const useGridStore = create<GridStoreState>((set, get) => ({
 
   // --- Column visibility ---
 
-  setColumnVisibility: (next) =>
-    set({
-      columnVisibility: { ...next },
+  setColumnVisibility: (updater) =>
+    set((state) => {
+      const next =
+        typeof updater === 'function'
+          ? updater(state.columnVisibility)
+          : updater;
+
+      return {
+        columnVisibility: { ...next },
+      };
     }),
 
   toggleColumnVisibility: (columnId) =>
     set((state) => {
       const current = state.columnVisibility[columnId];
-      const isCurrentlyVisible = current !== false; // undefined o true => visible
+      const isCurrentlyVisible = current !== false; // undefined or true => visible
       const nextValue = isCurrentlyVisible ? false : true;
 
       return {
@@ -149,8 +146,7 @@ export const useGridStore = create<GridStoreState>((set, get) => ({
       };
     }),
 
-
-  // Nota: el “default” real (todas visibles / config) se resolverá en useDataGrid.
+  // Note: the real default (all visible / config) is resolved in useDataGrid.
   resetColumnVisibility: () =>
     set({
       columnVisibility: {},
@@ -158,9 +154,16 @@ export const useGridStore = create<GridStoreState>((set, get) => ({
 
   // --- Column ordering ---
 
-  setColumnOrder: (next) =>
-    set({
-      columnOrder: [...next],
+  setColumnOrder: (updater) =>
+    set((state) => {
+      const next =
+        typeof updater === 'function'
+          ? updater(state.columnOrder)
+          : updater;
+
+      return {
+        columnOrder: [...next],
+      };
     }),
 
   moveColumn: (columnId, targetIndex) =>
@@ -194,7 +197,7 @@ export const useGridStore = create<GridStoreState>((set, get) => ({
       };
     }),
 
-  // Igual que visibilidad: el orden “default” se calculará según columnsDefinition.
+  // Same as visibility: the default order is inferred from columnsDefinition.
   resetColumnOrder: () =>
     set({
       columnOrder: [],
@@ -204,13 +207,13 @@ export const useGridStore = create<GridStoreState>((set, get) => ({
 
   setRowSelection: (updater) =>
     set((state) => {
-      const nextRowSelection =
+      const next =
         typeof updater === 'function'
-          ? (updater as Updater<RowSelectionState>)(state.rowSelection)
+          ? updater(state.rowSelection)
           : updater;
 
       return {
-        rowSelection: nextRowSelection,
+        rowSelection: next,
       };
     }),
 
@@ -219,21 +222,21 @@ export const useGridStore = create<GridStoreState>((set, get) => ({
       rowSelection: {},
     }),
 
-  // Single-select por defecto: una única fila seleccionada o ninguna.
+  // Single-select by default: only one row selected or none.
   selectSingleRow: (rowId) =>
     set(() =>
       rowId
         ? {
-          rowSelection: {
-            [rowId]: true,
-          },
-        }
+            rowSelection: {
+              [rowId]: true,
+            },
+          }
         : {
-          rowSelection: {},
-        },
+            rowSelection: {},
+          },
     ),
 
-  // Útil para futuro multi-select (Ctrl/Cmd + click).
+  // Useful for future multi-select (Ctrl/Cmd + click).
   toggleRowSelection: (rowId) =>
     set((state) => {
       const isSelected = !!state.rowSelection[rowId];
@@ -324,7 +327,7 @@ export const useGridStore = create<GridStoreState>((set, get) => ({
         columnVisibility: view.columnVisibility,
         columnOrder: view.columnOrder,
         activeViewId: view.id,
-        // Al cambiar de vista limpiamos selección para evitar inconsistencias.
+        // Clear selection when switching views to avoid inconsistencies.
         rowSelection: {},
       };
     }),

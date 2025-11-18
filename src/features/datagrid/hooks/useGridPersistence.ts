@@ -15,7 +15,7 @@ export const useGridPersistence = () => {
   const views = useGridStore((state) => state.views);
   const activeViewId = useGridStore((state) => state.activeViewId);
 
-  // 1) Cargar estado persistido al montar
+  // 1) Load persisted state on mount
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(GRID_STORAGE_KEY);
@@ -27,7 +27,6 @@ export const useGridPersistence = () => {
       hydrateFromStorage(parsed);
     } catch (error) {
       if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
         console.warn(
           '[DataGrid] Failed to hydrate grid state from localStorage',
           error,
@@ -36,7 +35,7 @@ export const useGridPersistence = () => {
     }
   }, [hydrateFromStorage]);
 
-  // 2) Guardar cambios relevantes
+  // 2) Persist relevant changes
   useEffect(() => {
     try {
       const snapshot = exportToStorage();
@@ -46,7 +45,6 @@ export const useGridPersistence = () => {
       );
     } catch (error) {
       if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
         console.warn(
           '[DataGrid] Failed to persist grid state to localStorage',
           error,

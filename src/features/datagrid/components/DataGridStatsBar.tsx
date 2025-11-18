@@ -44,15 +44,21 @@ export const DataGridStatsBar: React.FC<DataGridStatsBarProps> = ({
 
   return (
     <motion.div
-      className="mb-2 border-b border-slate-800 px-3 py-2 text-[11px] text-slate-300 dark:border-slate-700 sm:flex sm:items-center sm:justify-between"
+      className="mb-2 border-b border-slate-200 bg-slate-50/80 px-3 py-2 text-[11px] text-slate-600 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-300 sm:flex sm:items-center sm:justify-between"
       initial={{ opacity: 0, y: -4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={STATS_BAR_TRANSITION}
     >
-      <div className="font-medium">{mainLabel}</div>
+      <div className="font-medium text-slate-700 dark:text-slate-200">
+        {mainLabel}
+      </div>
       <div className="mt-1 flex flex-wrap gap-3 sm:mt-0">
-        <span className="text-slate-400">{filtersLabel}</span>
-        <span className="text-slate-400">{sortingLabel}</span>
+        <span className="text-slate-500 dark:text-slate-400">
+          {filtersLabel}
+        </span>
+        <span className="text-slate-500 dark:text-slate-400">
+          {sortingLabel}
+        </span>
       </div>
     </motion.div>
   );

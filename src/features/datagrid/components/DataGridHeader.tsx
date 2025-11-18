@@ -34,7 +34,7 @@ const renderFilterControl = (column: Column<GridRow, unknown>) => {
   const filterValue = column.getFilterValue() ?? '';
 
   const commonInputClasses =
-    'mt-1 w-full rounded-md border border-slate-200 bg-white/60 px-2 py-1 text-xs outline-none transition focus:ring-1 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-900/70';
+    'mt-1 w-full rounded-md border border-slate-200 bg-white/70 px-2 py-1 text-xs text-slate-700 outline-none transition focus:ring-1 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200';
 
   if (filterType === 'select') {
     const value =
@@ -120,7 +120,7 @@ export const DataGridHeader = ({ table }: DataGridHeaderProps) => {
 
   return (
     <motion.thead
-      className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur dark:bg-slate-900/90"
+      className="sticky top-0 z-10 bg-slate-100/95 backdrop-blur dark:bg-slate-900/90"
       initial={{ opacity: 0, y: -4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={HEADER_TRANSITION}
@@ -171,10 +171,11 @@ export const DataGridHeader = ({ table }: DataGridHeaderProps) => {
                           ? header.column.getToggleSortingHandler()
                           : undefined
                       }
-                      className={`flex w-full items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300 ${justifyClass} ${canSort
+                      className={`flex w-full items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300 ${justifyClass} ${
+                        canSort
                           ? 'cursor-pointer hover:text-slate-900 dark:hover:text-white'
                           : 'cursor-default'
-                        }`}
+                      }`}
                     >
                       <span>{header.column.columnDef.header as string}</span>
                       {canSort && (

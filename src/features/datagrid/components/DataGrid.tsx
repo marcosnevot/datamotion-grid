@@ -35,24 +35,25 @@ export function DataGrid({ onSelectionChange }: DataGridProps) {
     >
       <header className="flex items-end justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-slate-50">
-            Massive dataset (Phase 5 – column config, row selection and views)
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+            Massive dataset (Phase 6 – testing, performance and cleanup)
           </h2>
-          <p className="text-xs text-slate-400">
-            Virtualized analytical grid with sorting, per-column filters,
-            global search, column configuration and row selection.
+          <p className="text-xs text-slate-600 dark:text-slate-400">
+            Virtualized analytical grid kept stable while Phase 6 focuses on stronger test coverage,
+            performance measurement and non-intrusive optimizations around sorting, filters, search,
+            column configuration and row selection.
           </p>
         </div>
 
-        <div className="flex items-center gap-3 text-xs text-slate-400">
+        <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-400">
           {isLoading && (
-            <span className="animate-pulse text-slate-300">
+            <span className="animate-pulse text-slate-700 dark:text-slate-300">
               Loading dataset…
             </span>
           )}
           {!isLoading && (
             <span>
-              <span className="font-mono text-slate-100">
+              <span className="font-mono text-slate-900 dark:text-slate-100">
                 {rowCount.toLocaleString('en-US')}
               </span>{' '}
               rows
@@ -61,9 +62,9 @@ export function DataGrid({ onSelectionChange }: DataGridProps) {
         </div>
       </header>
 
-      <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/60 shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
         {error ? (
-          <div className="flex h-full items-center justify-center px-4 py-8 text-sm text-red-300">
+          <div className="flex h-full items-center justify-center px-4 py-8 text-sm text-red-700 bg-red-50 dark:bg-red-950/40 dark:text-red-200">
             Failed to load dataset: {error.message}
           </div>
         ) : (

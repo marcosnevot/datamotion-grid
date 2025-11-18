@@ -1,5 +1,5 @@
 // src/features/datagrid/components/DataGridCell.tsx
-import type { ReactNode } from 'react';
+import { memo, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { createMotionTransition } from '../config/motionSettings';
 
@@ -10,10 +10,7 @@ type DataGridCellProps = {
 
 const CELL_TRANSITION = createMotionTransition('fast');
 
-export const DataGridCell: React.FC<DataGridCellProps> = ({
-  children,
-  className,
-}) => {
+const DataGridCellComponent = ({ children, className }: DataGridCellProps) => {
   return (
     <td className={className}>
       <motion.div
@@ -29,3 +26,5 @@ export const DataGridCell: React.FC<DataGridCellProps> = ({
     </td>
   );
 };
+
+export const DataGridCell = memo(DataGridCellComponent);

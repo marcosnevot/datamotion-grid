@@ -1,5 +1,11 @@
 // src/features/datagrid/types/gridTypes.ts
-import type { ColumnFiltersState, SortingState } from '@tanstack/react-table';
+import type {
+  ColumnFiltersState,
+  SortingState,
+  VisibilityState,
+  ColumnOrderState,
+  RowSelectionState as TableRowSelectionState,
+} from '@tanstack/react-table';
 import type { DatasetRow } from '../../dataset/types/datasetTypes';
 
 export type GridRow = DatasetRow;
@@ -21,21 +27,22 @@ export interface GridColumnMeta {
 
 /**
  * Column visibility
- * Record of columnId → visible flag.
+ * Thin wrapper around TanStack VisibilityState.
+ * Keys are columnIds, values indicate visibility (false = hidden).
  */
-export type ColumnVisibilityState = Record<GridColumnId, boolean>;
+export type ColumnVisibilityState = VisibilityState;
 
 /**
  * Column ordering
- * Ordered list of columnIds.
+ * Thin wrapper around TanStack ColumnOrderState (array of columnIds).
  */
-export type ColumnOrder = GridColumnId[];
+export type ColumnOrder = ColumnOrderState;
 
 /**
- * Row selection state (TanStack-compatible)
+ * Row selection state (TanStack-compatible).
  * Keys are rowIds, values indicate selection.
  */
-export type RowSelectionState = Record<string, boolean>;
+export type RowSelectionState = TableRowSelectionState;
 
 /**
  * Derived info about current selection.

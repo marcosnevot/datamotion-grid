@@ -24,19 +24,19 @@ export interface UseDatasetResult {
 
 /**
  * useDataset
- * Encapsula la obtención del dataset (mock en Fase 2).
- * Más adelante se podrá cambiar a fetch real sin tocar los consumidores.
+ * Encapsulates dataset retrieval (mock in Phase 2).
+ * Later we can switch to a real fetch without touching consumers.
  */
 export function useDataset(options?: UseDatasetOptions): UseDatasetResult {
   const [rows, setRows] = useState<DatasetRow[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    const rowCount = options?.rowCount ?? ROW_COUNT_DEFAULT;
-    const seed = options?.seed ?? DATASET_SEED;
-    const debugPerformance = options?.debugPerformance === true;
+  const rowCount = options?.rowCount ?? ROW_COUNT_DEFAULT;
+  const seed = options?.seed ?? DATASET_SEED;
+  const debugPerformance = options?.debugPerformance === true;
 
+  useEffect(() => {
     try {
       const { result: data } = measureSync(
         'dataset:generateMockDataset',
@@ -52,8 +52,7 @@ export function useDataset(options?: UseDatasetOptions): UseDatasetResult {
     } finally {
       setIsLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // En Fase 2 no dependemos de opciones reactivamente
+  }, [rowCount, seed, debugPerformance]);
 
   return { rows, isLoading, error };
 }

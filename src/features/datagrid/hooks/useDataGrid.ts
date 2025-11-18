@@ -19,7 +19,7 @@ import { useGridStore } from '../store/gridStore';
 import { useGridPersistence } from './useGridPersistence';
 
 export const useDataGrid = () => {
-  // Activar persistencia ligera (columnVisibility, columnOrder, views, activeViewId)
+  // Enable lightweight persistence (columnVisibility, columnOrder, views, activeViewId)
   useGridPersistence();
 
   const { rows, isLoading, error } = useDataset({
@@ -78,6 +78,8 @@ export const useDataGrid = () => {
     return normalized;
   }, [columnOrder, allColumnIds]);
 
+  // TanStack Table is not yet compatible with the React Compiler rule used by this lint.
+  // We intentionally opt out of this specific warning here.
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable<GridRow>({
     data: rows,
@@ -104,6 +106,17 @@ export const useDataGrid = () => {
   });
 
   const selectedRowInfo: SelectedRowInfo = useMemo(() => {
+    const hasSelection = Object.keys(rowSelection).length > 0;
+
+    if (!hasSelection) {
+      return {
+        selectedRow: null,
+        selectedCount: 0,
+        selectedIds: [],
+        selectedRows: [],
+      };
+    }
+
     const selectedRowsModel = table.getSelectedRowModel().flatRows ?? [];
     const selectedCount = selectedRowsModel.length;
 

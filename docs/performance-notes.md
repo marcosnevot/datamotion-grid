@@ -299,3 +299,123 @@ To maintain performance in later phases, it is recommended to:
 With these guardrails, the additional complexity introduced in Phase 5 remains
 controlled and compatible with the goal of a **massive, smooth, and responsive**
 grid.
+
+---
+
+## Phase 6 – Performance measurements & decisions
+
+This phase focused on validating that the existing virtualization strategy scales to large datasets and on applying small, targeted optimizations without changing the overall UX.
+
+### Virtualization configuration (final for Phase 6)
+
+The grid continues to rely on TanStack Virtual for row virtualization, with the following configuration:
+
+- `DEFAULT_ROW_HEIGHT = 40`  
+  - Used as the base estimate for all virtual rows.
+  - Keeps the scroll physics predictable and matches the current visual density of the table.
+
+- `VIRTUALIZED_OVERSCAN = 8`  
+  - Number of extra rows rendered above and below the viewport.
+  - Chosen as a balance between:
+    - Smooth scrolling (no visible “hole” while flinging).
+    - Keeping the DOM node count low even with 20k–50k rows.
+
+- `MAX_ROWS = 50_000`  
+  - Upper bound for demo datasets.
+  - The generator can technically go beyond this, but the grid is optimised and tested around this range.
+
+The virtualized body (`DataGridVirtualBody`) still renders only:
+
+- One padding row at the top.
+- The visible virtual rows.
+- One padding row at the bottom.
+
+No changes were made to row heights or the basic virtualization strategy in Phase 6.
+
+### Dataset generation & measurement
+
+The dataset is still generated entirely on the client:
+
+- `generateMockDataset(rowCount, seed)`:
+  - Deterministic pseudo-random generator (`DATASET_SEED`).
+  - ~3 years of dates for `createdAt`.
+  - Bounded numeric range for `amount`.
+
+- `useDataset` wraps the generator with a small measurement helper:
+  - Uses `measureSync('dataset:generateMockDataset', fn, { log: debugPerformance })`.
+  - When `ENABLE_DEBUG_MEASURES` is `true`, the duration is logged via `console.debug`.
+
+This allows developers to quickly check how dataset size impacts generation time without introducing heavy tooling.
+
+### Memoization strategy
+
+Phase 6 introduced a few targeted memoization improvements:
+
+- `useDataGrid`:
+  - Already memoises:
+    - `allColumnIds` derived from `gridColumns`.
+    - `resolvedColumnVisibility` (column IDs are validated and unknown keys are dropped).
+    - `resolvedColumnOrder` (normalised and completed with any missing IDs).
+  - These `useMemo` calls were kept as-is and considered sufficient for the table-level configuration.
+
+- `DataGridRow`:
+  - The row click handler is now wrapped in `useCallback`, with dependencies on:
+    - `isSelected`
+    - `row`
+    - `table`
+  - This avoids recreating the handler on every render and keeps React’s diffing simpler when large parts of the table re-render.
+
+- `DataGridCell`:
+  - The component is now exported as `memo(DataGridCellComponent)`.
+  - This prevents unnecessary re-renders of individual cells when:
+    - Their `children` and `className` props do not change.
+    - The parent row re-renders due to selection changes or virtual index updates.
+  - Framer Motion is still used for subtle opacity/translate animations, but memoisation ensures we do not animate more cells than necessary.
+
+The general rule for Phase 6 was:
+
+> Only add `React.memo`, `useMemo` or `useCallback` where profiling or reasoning shows a real benefit, and avoid premature optimisation.
+
+### Measuring performance as a developer
+
+To reproduce and validate performance locally:
+
+1. **Run the app in development mode**  
+   - `npm run dev`  
+   - Open the app in the browser.
+
+2. **Use the React DevTools Profiler**  
+   - Start a profiling session.
+   - Interact with the grid:
+     - Scroll quickly with a large dataset.
+     - Apply sorting and filters.
+     - Toggle column visibility and order.
+     - Select and deselect rows.
+   - Stop the recording and inspect:
+     - Which components re-render.
+     - How long renders take in ms.
+
+3. **Use the browser Performance panel**  
+   - Record while:
+     - Flinging the scroll with ~20k+ rows.
+     - Typing into the global search.
+   - Look for:
+     - Long tasks on the main thread.
+     - Layout/paint spikes.
+
+4. **Optional: enable debug timings for dataset generation**  
+   - Set `ENABLE_DEBUG_MEASURES = true` in `gridSettings.ts` (for local development).
+   - Reload the app.
+   - Check the console for `[perf] dataset:generateMockDataset: X ms` logs.
+
+### Future performance improvements (beyond Phase 6)
+
+Ideas explicitly left out of Phase 6 but worth exploring later:
+
+- More granular memoisation for heavy cells (e.g. expensive formatting or visualisations).
+- Measuring and optimising for extremely large datasets (100k+ rows) if needed.
+- Automated performance regression tests (e.g. via custom scripts or browser automation + metrics).
+- Exposing a small “FPS / perf” panel in the UI that surfaces basic runtime metrics for demo purposes.
+
+---
+

@@ -397,3 +397,98 @@ virtualization strategy:
 
 As a result, the grid continues to support 5k–50k rows with smooth scrolling while
 adding significantly richer interaction and configuration capabilities in Phase 5.
+
+---
+
+## Phase 6 – Testing & performance architecture slice
+
+Phase 6 did not change the high-level architecture (React + TanStack Table + TanStack Virtual + Zustand), but it reinforced how the pieces work together from a testing and performance point of view.
+
+### Testing layers
+
+The project now has a clear test pyramid:
+
+- **Unit tests** (`src/tests/unit`):
+  - Pure utilities:
+    - `filterUtils`: per-column filter logic.
+    - `sortUtils`: sorting comparators.
+    - `virtualizationUtils`: abstractions for virtual items and estimated heights.
+    - `performance`: behaviour of the `measureSync` helper and its fallbacks.
+    - `keyboard`: detection of keyboard shortcuts and event handling.
+  - Store:
+    - `gridStore`: grid state transitions, view application, persistence snapshots.
+
+- **Component tests** (`src/tests/component`):
+  - `DataGrid`: end-to-end-ish tests at component level, using a small dataset.
+  - `DataGridToolbar`: search, clear filters, columns panel, view selection, keyboard shortcuts.
+  - `ColumnVisibilityPanel`, `ColumnOrderingPanel`, `RowDetailPanel`, `SidePanel`: focused tests for configuration panels and detail rendering.
+
+- **End-to-end tests** (`src/tests/e2e`):
+  - Playwright-based flows (e.g. `basic-flow.e2e.ts`) that:
+    - Load the application via Vite’s dev server.
+    - Interact with the grid (search, columns, selection).
+    - Assert that the side panel updates and that column configuration persists via `localStorage`.
+
+This structure makes it easy to evolve the grid without breaking behaviour, and provides a clear place to add new tests in future phases.
+
+### Performance helpers and data pipeline
+
+The data pipeline and performance helpers are intentionally simple:
+
+- **Dataset generation**:
+  - `generateMockDataset` produces deterministic rows for a given `rowCount` and `seed`.
+  - `useDataset` encapsulates:
+    - Generation.
+    - Loading state.
+    - Error handling.
+    - Optional performance measurement via `measureSync`.
+
+- **Performance helper**:
+  - `measureSync` wraps a synchronous function and:
+    - Uses `performance.now()` when available.
+    - Falls back to `Date.now()` in non-browser or limited environments.
+    - Returns both the `result` and a `{ label, durationMs }` sample.
+    - Optionally logs via `console.debug` when `log: true`.
+
+- **Configuration flag**:
+  - `ENABLE_DEBUG_MEASURES` (in `gridSettings.ts`) is the single toggle to enable or disable local performance logging for dataset generation and, in future, other hot paths.
+
+### Grid state & virtualization (final picture for Phase 6)
+
+The grid continues to be orchestrated around `gridStore` and `useDataGrid`:
+
+- `gridStore` is the single source of truth for:
+  - Sorting and column filters.
+  - Global filter.
+  - Column visibility and order.
+  - Row selection.
+  - Views (predefined presets) and active view ID.
+  - Light persistence snapshots (`exportToStorage`, `hydrateFromStorage`).
+
+- `useDataGrid`:
+  - Bridges `gridStore` to TanStack Table:
+    - Passes a consolidated `state` object into `useReactTable`.
+    - Wires all `on*Change` callbacks back to the store.
+  - Computes derived values:
+    - Normalised column visibility and order.
+    - `SelectedRowInfo` (selected row, count, arrays) for the `SidePanel`.
+
+- `DataGridVirtualBody`:
+  - Uses TanStack Virtual (`useVirtualizer`) to render only a small slice of the total rows.
+  - Delegates row rendering to `DataGridRow`, which in turn composes multiple `DataGridCell` components.
+
+Phase 6 added light memoisation in the row and cell components to reduce unnecessary renders without changing the conceptual architecture.
+
+### Why we avoided more invasive optimisations
+
+Phase 6 explicitly avoided:
+
+- Introducing additional state management layers (e.g. Redux) just for performance.
+- Rewriting the virtualization logic from scratch.
+- Micro-optimising every render path at the cost of readability.
+
+The goal was to keep the architecture:
+
+- **Understandable** for someone reading the code from GitHub.
+- **Extensible** for future work (custom views, richer keyboard navigation).
+- **Safe** in terms of regressions thanks to the reinforced tests and E2E coverage.

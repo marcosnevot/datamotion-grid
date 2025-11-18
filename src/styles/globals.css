@@ -1,1 +1,14 @@
-/* Global styles placeholder for future phases */
+/* src/styles/globals.css */
+@layer base {
+  html {
+    @apply bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100;
+  }
+
+  body {
+    @apply min-h-screen antialiased;
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+}

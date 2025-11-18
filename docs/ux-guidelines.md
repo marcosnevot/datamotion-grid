@@ -408,3 +408,30 @@ Whenever shortcuts change:
 This keeps discoverability high while avoiding divergence between docs, UI hints  
 and actual behavior.
 
+---
+
+## Phase 6 – UX impact of performance optimisations
+
+The performance work in Phase 6 was intentionally designed to be invisible from a UX perspective, except for making interactions feel smoother under load.
+
+Key points:
+
+- **Virtualisation behaviour**:
+  - The row height and overscan configuration keep the scroll behaviour consistent across phases.
+  - Users should not notice any change in how the table scrolls, aside from a more stable frame rate with large datasets.
+
+- **Row and cell rendering**:
+  - The introduction of `React.memo` and `useCallback` in grid rows and cells does not change what is rendered.
+  - Visual states (hover, selection, zebra striping) remain the same.
+  - Framer Motion animations still use only `opacity` and `transform` to avoid layout thrashing.
+
+- **Loading experience**:
+  - Dataset generation is still synchronous but fast for the current dataset sizes.
+  - Optional performance logging is kept in the console only, never surfaced as noisy UI.
+
+- **Accessibility**:
+  - No shortcuts or focus behaviours were changed in Phase 6.
+  - Keyboard interactions (`F`, `Alt+C`, `Alt+1..3`) continue to work as described in the keyboard shortcuts documentation.
+  - Any future “perf panel” or FPS indicator should remain purely informational and not block main workflows.
+
+Overall, Phase 6 aims to keep the UX **identical in behaviour** while improving perceived performance and preparing the codebase for any future, more advanced performance features.
