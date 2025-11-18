@@ -1,8 +1,9 @@
 // src/features/datagrid/components/DataGridRow.tsx
-import { motion } from 'framer-motion';
-import type { Row } from '@tanstack/react-table';
+import { motion, AnimatePresence } from 'framer-motion';
+import type { Row, Table } from '@tanstack/react-table';
+import type { MouseEvent } from 'react';
 import type { DatasetStatus } from '../../dataset/types/datasetTypes';
-import type { GridRow } from '../types/gridTypes';
+import type { GridRow, GridColumnId } from '../types/gridTypes';
 import {
   MOTION_ELEVATION_TRANSLATE_Y,
   createMotionTransition,
@@ -11,6 +12,7 @@ import { DataGridCell } from './DataGridCell';
 
 type DataGridRowProps = {
   row: Row<GridRow>;
+  table: Table<GridRow>;
   virtualIndex: number;
 };
 
@@ -44,45 +46,134 @@ function StatusBadge({ status }: StatusBadgeProps) {
   );
 }
 
-export function DataGridRow({ row, virtualIndex }: DataGridRowProps) {
+export function DataGridRow({ row, table, virtualIndex }: DataGridRowProps) {
   const original = row.original;
+  const visibleCells = row.getVisibleCells();
+  const isSelected = row.getIsSelected();
+
+  const handleRowClick = (event: MouseEvent<HTMLTableRowElement>) => {
+    // Ctrl / Cmd → toggle (multi-select futuro)
+    if (event.ctrlKey || event.metaKey) {
+      row.toggleSelected();
+      return;
+    }
+
+    // Single-select
+    if (isSelected) {
+      table.setRowSelection({});
+    } else {
+      table.setRowSelection({
+        [row.id]: true,
+      });
+    }
+  };
+
+  const rowClasses =
+    [
+      'border-b border-slate-800/70',
+      'odd:bg-slate-950/40 even:bg-slate-900/40',
+      'hover:bg-slate-800/50',
+      'cursor-pointer',
+      // Overrides when selected 
+      'data-[selected=true]:bg-sky-950/60',
+      'data-[selected=true]:hover:bg-sky-900/70',
+    ].join(' ');
 
   return (
     <motion.tr
-      className="border-b border-slate-800/70 odd:bg-slate-950/40 even:bg-slate-900/40 hover:bg-slate-800/50"
+      className={rowClasses}
       data-index={virtualIndex}
+      data-selected={isSelected ? 'true' : 'false'}
       whileHover={{
         y: MOTION_ELEVATION_TRANSLATE_Y,
       }}
       transition={ROW_HOVER_TRANSITION}
+      onClick={handleRowClick}
     >
-      <DataGridCell className="px-4 py-2 font-mono text-xs text-slate-300">
-        {original.id}
-      </DataGridCell>
+      <AnimatePresence initial={false}>
+        {visibleCells.map((cell) => {
+          const columnId = cell.column.id as GridColumnId;
 
-      <DataGridCell className="max-w-[200px] px-4 py-2 text-slate-50">
-        <span className="line-clamp-1">{original.name}</span>
-      </DataGridCell>
+          switch (columnId) {
+            case 'id':
+              return (
+                <DataGridCell
+                  key={cell.id}
+                  className="px-4 py-2 font-mono text-xs text-slate-300"
+                >
+                  {original.id}
+                </DataGridCell>
+              );
 
-      <DataGridCell className="max-w-[260px] px-4 py-2 text-slate-300">
-        <span className="line-clamp-1">{original.email}</span>
-      </DataGridCell>
+            case 'name':
+              return (
+                <DataGridCell
+                  key={cell.id}
+                  className="max-w-[200px] px-4 py-2 text-slate-50"
+                >
+                  <span className="line-clamp-1">{original.name}</span>
+                </DataGridCell>
+              );
 
-      <DataGridCell className="px-4 py-2">
-        <StatusBadge status={original.status as DatasetStatus} />
-      </DataGridCell>
+            case 'email':
+              return (
+                <DataGridCell
+                  key={cell.id}
+                  className="max-w-[260px] px-4 py-2 text-slate-300"
+                >
+                  <span className="line-clamp-1">{original.email}</span>
+                </DataGridCell>
+              );
 
-      <DataGridCell className="px-4 py-2 text-slate-200">
-        {original.country}
-      </DataGridCell>
+            case 'status':
+              return (
+                <DataGridCell key={cell.id} className="px-4 py-2">
+                  <StatusBadge status={original.status as DatasetStatus} />
+                </DataGridCell>
+              );
 
-      <DataGridCell className="px-4 py-2 text-slate-300">
-        {original.createdAt.slice(0, 10)}
-      </DataGridCell>
+            case 'country':
+              return (
+                <DataGridCell
+                  key={cell.id}
+                  className="px-4 py-2 text-slate-200"
+                >
+                  {original.country}
+                </DataGridCell>
+              );
 
-      <DataGridCell className="px-4 py-2 text-right font-mono text-xs text-slate-100">
-        {original.amount.toFixed(2)}
-      </DataGridCell>
+            case 'createdAt':
+              return (
+                <DataGridCell
+                  key={cell.id}
+                  className="px-4 py-2 text-slate-300"
+                >
+                  {original.createdAt.slice(0, 10)}
+                </DataGridCell>
+              );
+
+            case 'amount':
+              return (
+                <DataGridCell
+                  key={cell.id}
+                  className="px-4 py-2 text-right font-mono text-xs text-slate-100"
+                >
+                  {original.amount.toFixed(2)}
+                </DataGridCell>
+              );
+
+            default:
+              return (
+                <DataGridCell
+                  key={cell.id}
+                  className="px-4 py-2 text-slate-200"
+                >
+                  {String(cell.getValue() ?? '')}
+                </DataGridCell>
+              );
+          }
+        })}
+      </AnimatePresence>
     </motion.tr>
   );
 }

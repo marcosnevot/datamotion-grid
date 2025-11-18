@@ -4,7 +4,7 @@ export function AppFooter() {
       <span>DataMotion Grid · Internal prototype</span>
 
       <div className="flex items-center gap-4">
-        <span>Phase 4 – animations &amp; microinteractions</span>
+        <span>Phase 5 – column config, row selection and views</span>
         <span className="hidden sm:inline">FPS / perf panel coming in later phases</span>
       </div>
     </div>

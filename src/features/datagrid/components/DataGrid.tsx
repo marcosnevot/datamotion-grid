@@ -1,5 +1,5 @@
 // src/features/datagrid/components/DataGrid.tsx
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useDataGrid } from '../hooks/useDataGrid';
 import { DataGridVirtualBody } from './DataGridVirtualBody';
@@ -7,12 +7,23 @@ import { DataGridHeader } from './DataGridHeader';
 import { DataGridToolbar } from './DataGridToolbar';
 import { DataGridStatsBar } from './DataGridStatsBar';
 import { createMotionTransition } from '../config/motionSettings';
+import type { SelectedRowInfo } from '../types/gridTypes';
 
 const GRID_SECTION_TRANSITION = createMotionTransition('medium');
 
-export function DataGrid() {
-  const { table, rowCount, isLoading, error } = useDataGrid();
+export interface DataGridProps {
+  onSelectionChange?: (info: SelectedRowInfo) => void;
+}
+
+export function DataGrid({ onSelectionChange }: DataGridProps) {
+  const { table, rowCount, isLoading, error, selectedRowInfo } = useDataGrid();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (onSelectionChange) {
+      onSelectionChange(selectedRowInfo);
+    }
+  }, [onSelectionChange, selectedRowInfo]);
 
   return (
     <motion.section
@@ -25,11 +36,11 @@ export function DataGrid() {
       <header className="flex items-end justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-slate-50">
-            Massive dataset (Phase 4 – animations &amp; microinteractions)
+            Massive dataset (Phase 5 – column config, row selection and views)
           </h2>
           <p className="text-xs text-slate-400">
-            Virtualized analytical grid with column sorting, per-column filters,
-            global search and a subtle motion layer powered by Framer Motion.
+            Virtualized analytical grid with sorting, per-column filters,
+            global search, column configuration and row selection.
           </p>
         </div>
 
@@ -64,10 +75,7 @@ export function DataGrid() {
               ref={scrollContainerRef}
               className="max-h-[calc(100vh-260px)] overflow-auto"
             >
-              <table
-                className="min-w-full text-left text-sm"
-                role="table"
-              >
+              <table className="min-w-full text-left text-sm" role="table">
                 <DataGridHeader table={table} />
                 <DataGridVirtualBody
                   table={table}

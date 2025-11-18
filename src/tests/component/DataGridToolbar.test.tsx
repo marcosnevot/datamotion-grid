@@ -11,15 +11,19 @@ import {
 import type { ColumnFiltersState, SortingState } from '@tanstack/react-table';
 import { DataGridToolbar } from '../../features/datagrid/components/DataGridToolbar';
 import { useGridStore } from '../../features/datagrid/store/gridStore';
+import { PREDEFINED_VIEWS } from '../../features/datagrid/config/viewsConfig';
 
 describe('DataGridToolbar', () => {
   beforeEach(() => {
     // Reset grid store to a known base state before each test
-    useGridStore.setState({
+    useGridStore.setState((state) => ({
+      ...state,
       sorting: [] as SortingState,
       columnFilters: [] as ColumnFiltersState,
       globalFilter: '',
-    });
+      views: [],
+      activeViewId: null,
+    }));
   });
 
   afterEach(() => {
@@ -98,5 +102,68 @@ describe('DataGridToolbar', () => {
 
     expect(globalFilter).toBe('');
     expect(columnFilters).toEqual([]);
+  });
+
+  it('focuses search input when pressing F', async () => {
+    render(<DataGridToolbar />);
+
+    const searchInput = screen.getByPlaceholderText(
+      /search in name, email, country/i,
+    );
+
+    expect(searchInput).not.toHaveFocus();
+
+    fireEvent.keyDown(window, { key: 'f' });
+
+    await waitFor(() => {
+      expect(searchInput).toHaveFocus();
+    });
+  });
+
+  it('toggles column configuration panel with Alt + C', async () => {
+    render(<DataGridToolbar />);
+
+    expect(
+      screen.queryByRole('dialog', {
+        name: /column configuration/i,
+      }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'c', altKey: true });
+
+    expect(
+      await screen.findByRole('dialog', {
+        name: /column configuration/i,
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'c', altKey: true });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', {
+          name: /column configuration/i,
+        }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it('applies second preset view with Alt + 2', async () => {
+    render(<DataGridToolbar />);
+
+    const secondViewId = PREDEFINED_VIEWS[1]?.id;
+    expect(secondViewId).toBeDefined();
+
+    // Esperar a que el efecto de bootstrap haya inicializado las vistas en el store
+    await waitFor(() => {
+      expect(useGridStore.getState().views.length).toBeGreaterThan(1);
+    });
+
+    fireEvent.keyDown(document, { key: '2', altKey: true });
+
+    await waitFor(() => {
+      const state = useGridStore.getState();
+      expect(state.activeViewId).toBe(secondViewId);
+    });
   });
 });

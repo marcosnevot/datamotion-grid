@@ -214,3 +214,88 @@ This keeps the table layout stable and prevents jank when scrolling through a la
 - Combined with existing performance helpers (`measureSync`) and debug flags for dataset generation, this allows:
   - Isolating pure computation costs (dataset, table model).
   - Separately tuning the perceived latency from animations and microinteractions.
+
+---
+
+## Phase 5 – State complexity, selection & persistence
+
+Phase 5 adds new capabilities to the grid (column configuration, selection,
+views, and lightweight persistence) with the explicit goal of **not degrading
+the performance** achieved in earlier phases.
+
+### 5.1. Cost model of the new state
+
+The new state slices (`columnVisibility`, `columnOrder`, `rowSelection`, `views`)
+are designed to be lightweight:
+
+- **`columnVisibility` and `columnOrder`**
+  - Their size is bounded by the number of columns, not the number of rows.
+  - Typical operations (`toggle`, `moveColumn`, `reset`) are at most O(n_columns).
+  - Changes in visibility or order only trigger re-renders of the header and the
+    affected cells, keeping full compatibility with virtualization.
+
+- **`rowSelection`**
+  - Stored as a `rowId → boolean` map, without duplicating row data.
+  - Aggregates used in `RowDetailPanel` (sum of `amount`, status counters, etc.)
+    are computed only over selected rows, which in practice tend to be few
+    compared to the total dataset.
+  - The cost of updating `rowSelection` when clicking a row is O(1) in the
+    current single-select mode.
+
+- **`views`**
+  - The number of predefined views is small and bounded.
+  - Applying a view means copying a few configuration arrays (sorting, filters,
+    visibility, order), not touching the full dataset.
+
+### 5.2. Interaction with virtualization
+
+The Phase 5 design decisions keep the same principles introduced in Phase 4:
+
+- **Row virtualization** remains responsible for limiting the number of real DOM
+  nodes.
+- Row selection does not add uncontrolled per-row listeners:
+  - The logic is concentrated in `DataGridRow`, which is only instantiated for
+    visible rows + overscan.
+- Changes in column visibility/order:
+  - Do not destroy the entire table; this is delegated to TanStack Table, which
+    is already optimized to update the affected headers and cells.
+
+In manual tests with ~20k rows, scrolling remains smooth, and selection
+operations, view changes, and column toggling do not introduce perceptible
+stutters on reasonable desktop hardware.
+
+### 5.3. Local storage and snapshot size
+
+Persistence in `localStorage` is limited to the **grid configuration**, not the
+dataset:
+
+- The snapshot includes:
+  - `columnVisibility`
+  - `columnOrder`
+  - `views`
+  - `activeViewId`
+- The size of the resulting JSON is small compared to any real dataset, so:
+  - `JSON.stringify` / `JSON.parse` operations are cheap.
+  - Reads/writes to `localStorage` do not happen in a critical render path (they
+    are done in React effects, reacting to configuration changes).
+
+Additionally:
+
+- The load logic is version-tolerant:
+  - If a `GridColumnId` appears that no longer exists in the current
+    configuration, it is ignored.
+  - If the snapshot is corrupted, it safely falls back to the grid defaults.
+
+### 5.4. Performance guardrails for future phases
+
+To maintain performance in later phases, it is recommended to:
+
+- Avoid deriving heavy data directly during render when it can be **memoized** or
+  computed only when selection changes.
+- Keep persistence focused on **config**, not on large volumes of data.
+- Continue using Framer Motion only on cheap properties (`opacity`, `transform`)
+  in new interactions related to selection or views.
+
+With these guardrails, the additional complexity introduced in Phase 5 remains
+controlled and compatible with the goal of a **massive, smooth, and responsive**
+grid.

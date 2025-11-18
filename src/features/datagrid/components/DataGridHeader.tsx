@@ -1,5 +1,5 @@
 // src/features/datagrid/components/DataGridHeader.tsx
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { Table, Column } from '@tanstack/react-table';
 import type {
   GridRow,
@@ -130,69 +130,78 @@ export const DataGridHeader = ({ table }: DataGridHeaderProps) => {
           key={headerGroup.id}
           className="border-b border-slate-200 text-xs dark:border-slate-800"
         >
-          {headerGroup.headers.map((header) => {
-            if (header.isPlaceholder) {
-              return <th key={header.id} className="px-3 py-2" />;
-            }
+          <AnimatePresence initial={false}>
+            {headerGroup.headers.map((header) => {
+              if (header.isPlaceholder) {
+                return <th key={header.id} className="px-3 py-2" />;
+              }
 
-            const meta = header.column.columnDef.meta as GridColumnMeta | undefined;
-            const alignClass = getAlignClass(meta?.align);
-            const justifyClass = getJustifyClass(alignClass);
-            const canSort = header.column.getCanSort();
-            const sortedState = header.column.getIsSorted(); // false | 'asc' | 'desc'
+              const meta = header.column
+                .columnDef.meta as GridColumnMeta | undefined;
+              const alignClass = getAlignClass(meta?.align);
+              const justifyClass = getJustifyClass(alignClass);
+              const canSort = header.column.getCanSort();
+              const sortedState = header.column.getIsSorted(); // false | 'asc' | 'desc'
 
-            const ariaSort =
-              sortedState === 'asc'
-                ? 'ascending'
-                : sortedState === 'desc'
-                ? 'descending'
-                : undefined;
+              const ariaSort =
+                sortedState === 'asc'
+                  ? 'ascending'
+                  : sortedState === 'desc'
+                    ? 'descending'
+                    : undefined;
 
-            return (
-              <th
-                key={header.id}
-                colSpan={header.colSpan}
-                className={`px-3 py-2 align-top ${alignClass}`}
-                aria-sort={ariaSort}
-              >
-                <div className="flex flex-col gap-1">
-                  <button
-                    type="button"
-                    disabled={!canSort}
-                    onClick={
-                      canSort ? header.column.getToggleSortingHandler() : undefined
-                    }
-                    className={`flex w-full items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300 ${justifyClass} ${
-                      canSort
-                        ? 'cursor-pointer hover:text-slate-900 dark:hover:text-white'
-                        : 'cursor-default'
-                    }`}
-                  >
-                    <span>{header.column.columnDef.header as string}</span>
-                    {canSort && (
-                      <motion.span
-                        className="text-[9px] opacity-80"
-                        animate={
-                          sortedState === 'asc'
-                            ? { opacity: 1, y: -1 }
-                            : sortedState === 'desc'
-                            ? { opacity: 1, y: 1 }
-                            : { opacity: 0.7, y: 0 }
-                        }
-                        transition={SORT_ICON_TRANSITION}
-                      >
-                        {sortedState === 'asc' && '▲'}
-                        {sortedState === 'desc' && '▼'}
-                        {!sortedState && '▽'}
-                      </motion.span>
-                    )}
-                  </button>
+              return (
+                <motion.th
+                  key={header.id}
+                  colSpan={header.colSpan}
+                  className={`px-3 py-2 align-top ${alignClass}`}
+                  aria-sort={ariaSort}
+                  layout
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={HEADER_TRANSITION}
+                >
+                  <div className="flex flex-col gap-1">
+                    <button
+                      type="button"
+                      disabled={!canSort}
+                      onClick={
+                        canSort
+                          ? header.column.getToggleSortingHandler()
+                          : undefined
+                      }
+                      className={`flex w-full items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300 ${justifyClass} ${canSort
+                          ? 'cursor-pointer hover:text-slate-900 dark:hover:text-white'
+                          : 'cursor-default'
+                        }`}
+                    >
+                      <span>{header.column.columnDef.header as string}</span>
+                      {canSort && (
+                        <motion.span
+                          className="text-[9px] opacity-80"
+                          animate={
+                            sortedState === 'asc'
+                              ? { opacity: 1, y: -1 }
+                              : sortedState === 'desc'
+                                ? { opacity: 1, y: 1 }
+                                : { opacity: 0.7, y: 0 }
+                          }
+                          transition={SORT_ICON_TRANSITION}
+                        >
+                          {sortedState === 'asc' && '▲'}
+                          {sortedState === 'desc' && '▼'}
+                          {!sortedState && '▽'}
+                        </motion.span>
+                      )}
+                    </button>
 
-                  {renderFilterControl(header.column)}
-                </div>
-              </th>
-            );
-          })}
+                    {renderFilterControl(header.column)}
+                  </div>
+                </motion.th>
+              );
+            })}
+          </AnimatePresence>
         </tr>
       ))}
     </motion.thead>

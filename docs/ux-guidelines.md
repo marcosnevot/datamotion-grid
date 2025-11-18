@@ -209,4 +209,202 @@ Phase 4 focuses on **visual feedback** without altering the functional behavior 
     - Light motion on the grid container or stats bar.
     - Never by animating every row in bulk.
 
+---
+
+## Phase 5 – UX for column configuration, selection & views
+
+Phase 5 introduces “power user” features to the grid: **row selection**,  
+**column configuration (visibility & order)** and **saved views**.  
+All of them must feel consistent with the motion and visual language established  
+in previous phases (especially Phase 4).
+
+### 5.1. Row selection & visual feedback
+
+#### Semantics
+
+Current selection model is **single-select via click**:
+
+- Clicking a row:
+  - Selects that row.
+  - Clears selection for all other rows.
+- Selection state is reflected in:
+  - Row visuals (`DataGridRow`):
+    - Distinct background and outline.
+    - Subtle elevation/hover animation, consistent with Phase 4.
+  - Accessibility attributes (`aria-selected` where applicable).
+  - Side panel (`RowDetailPanel`) and optionally `DataGridStatsBar`.
+
+The selection model is intentionally simple in Phase 5; range selection and  
+spreadsheet-like navigation are out of scope for now.
+
+#### RowDetailPanel states
+
+`RowDetailPanel` is the main consumer of selection state and must handle three cases:
+
+1. **No selection (0 rows)**
+
+   - Show an explicit empty state, e.g. “No rows selected”.
+   - Short guidance text: explain that clicking a row will show its details.
+
+2. **Single selection (1 row)**
+
+   - Show a compact but meaningful summary card:
+     - Fields: `id`, `name`, `email`, `status`, `country`, `createdAt`, `amount`.
+   - Formatting:
+     - `amount` formatted as fixed decimal / currency-like number.
+     - `status` displayed using the same badge style used elsewhere in the app.
+   - Layout:
+     - Prefer a vertical card layout with clear labels and values.
+     - Keep typography small but legible (data-dense UI).
+
+3. **Multiple selection (N > 1)**
+
+   - Show a summary header like “N rows selected”.
+   - Show selection-based aggregates:
+     - Sum of `amount` for selected rows.
+     - Optional breakdown by `status` (e.g. “2 Active, 1 Inactive”).
+   - Keep the panel compact: avoid rendering huge lists of selected rows here.
+
+#### Visual principles
+
+- Selection highlight must **not** compromise row readability.
+- Hover and selection visual states must combine gracefully:
+  - Hover can apply a subtle translation/elevation (from Phase 4).
+  - Selection uses a background/outline color that remains visible even without hover.
+- The feature must play well with virtualization:
+  - No per-row heavy effects that depend on non-visible rows.
+  - No scroll-jumping when toggling selection.
+
+### 5.2. Column visibility panel
+
+The **column visibility panel** (`ColumnVisibilityPanel`) is opened from a “Columns”  
+button in the grid toolbar.
+
+#### Behavior
+
+- The panel is rendered as a small dialog anchored to the toolbar button.
+- It lists all grid columns defined in `columnsDefinition`:
+
+  - Each row in the panel contains:
+    - A checkbox for visibility.
+    - The column label (truncated if necessary).
+    - An optional hint (e.g. “required”) when the column cannot be hidden.
+
+- Safeguards:
+  - The grid never allows **zero visible columns**.
+  - If the user attempts to hide the last visible column:
+    - The change is ignored.
+    - The checkbox remains checked and can optionally show a “required” hint.
+
+- Reset button:
+  - Restores default visibility for all columns as defined in `columnsDefinition`.
+  - Should not affect sorting, filters or column order.
+
+#### Accessibility & interaction
+
+- Panel root:
+  - Exposed as `role="dialog"` with `aria-label="Column visibility configuration"`.
+- List:
+  - Uses `role="list"` / `role="listitem"` for the column entries.
+- Checkboxes:
+  - Each checkbox must have an explicit `aria-label` such as:
+    - “Toggle visibility for {column label}”.
+- The panel can be closed by:
+  - Clicking outside of it.
+  - Pressing `Escape`.
+  - Clicking the “Columns” button again.
+
+### 5.3. Column ordering panel
+
+The **column ordering panel** (`ColumnOrderingPanel`) allows reordering columns using  
+simple “Move up / Move down” controls instead of drag & drop.
+
+#### Layout
+
+- Panel section title: “Column order”.
+- A list of items, each representing a column:
+
+  - Displays:
+    - The current index (1‑based).
+    - The column label.
+    - Two small buttons:
+      - “↑” – move the column up.
+      - “↓” – move the column down.
+
+- Edge conditions:
+  - The **first** column item has its “Move up” button disabled.
+  - The **last** column item has its “Move down” button disabled.
+
+#### Behavior
+
+- Clicking “Move up” moves the column one position earlier in `columnOrder`.
+- Clicking “Move down” moves it one position later.
+- Reset button:
+  - Restores the default order from `columnsDefinition`.
+  - Implementation detail: in this project, an empty `columnOrder` means
+    “use default order”, so reset sets `columnOrder` back to `[]`.
+
+The intent is to keep the control **predictable and keyboard-friendly**, without the  
+overhead and complexity of drag & drop reordering.
+
+### 5.4. Saved views (presets)
+
+Phase 5 introduces **predefined views** that bundle common grid configurations:
+
+- Example presets:
+  - `Default`
+  - `Active only`
+  - `High amount`
+
+These presets are defined in `viewsConfig` and stored in `gridStore`.
+
+#### UX in the toolbar
+
+- A `<select>` in the toolbar is used to switch between preset views.
+- Behavior:
+  - The current `activeViewId` is reflected in the `<select>` value.
+  - A placeholder such as “Custom view” is shown when:
+    - No view is active.
+    - The current state no longer matches any predefined view.
+
+#### Applying a view
+
+When the user selects a view (either from the dropdown or via a keyboard shortcut):
+
+- The grid applies the view’s configuration:
+  - Sorting
+  - Column filters
+  - Global filter
+  - Column visibility
+  - Column order
+- Row selection is cleared (`clearRowSelection`) to avoid inconsistencies.
+- The change is persisted in the local storage snapshot so the view survives reloads.
+
+If the user modifies the grid after applying a view (filters, sorting, etc.):
+
+- The grid is effectively in a “custom” state.
+- The `<select>` still shows the last preset that was applied, but:
+  - UX-wise, it is understood that the actual state is no longer identical to the preset.
+  - Future phases may add explicit support for user-defined saved views.
+
+### 5.5. Keyboard hints in the side panel
+
+The `SidePanel` includes a card dedicated to **keyboard shortcuts** that relate to  
+the grid. It must always stay in sync with the real shortcuts documented in  
+`docs/keyboard-shortcuts.md`.
+
+In Phase 5, this card typically mentions:
+
+- `F` — focus global search.
+- `Alt + C` — toggle column configuration panel.
+- `Alt + 1/2/3` — apply predefined views (Default / Active only / High amount).
+
+Whenever shortcuts change:
+
+1. Update the implementation in the keyboard utilities / handlers.
+2. Update `docs/keyboard-shortcuts.md`.
+3. Update the list inside the side panel card.
+
+This keeps discoverability high while avoiding divergence between docs, UI hints  
+and actual behavior.
 

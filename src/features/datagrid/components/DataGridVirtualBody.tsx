@@ -56,6 +56,7 @@ export function DataGridVirtualBody({
           <DataGridRow
             key={row.id}
             row={row}
+            table={table}
             virtualIndex={virtualRow.index}
           />
         );

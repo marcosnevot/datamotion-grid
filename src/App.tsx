@@ -1,4 +1,5 @@
 // src/App.tsx
+import { useState } from "react";
 import { MotionConfig } from "framer-motion";
 import { AppShell } from "./components/layout/AppShell";
 import { AppHeader } from "./components/layout/AppHeader";
@@ -7,9 +8,20 @@ import { SidePanel } from "./components/layout/SidePanel";
 import { DataGrid } from "./features/datagrid/components/DataGrid";
 import { getDefaultMotionTransition } from "./features/datagrid/config/motionSettings";
 import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion";
+import type { SelectedRowInfo } from "./features/datagrid/types/gridTypes";
+
+const initialSelectedRowInfo: SelectedRowInfo = {
+  selectedRow: null,
+  selectedCount: 0,
+  selectedIds: [],
+  selectedRows: [],
+};
 
 function App() {
   const reducedMotion = usePrefersReducedMotion();
+  const [selectedRowInfo, setSelectedRowInfo] = useState<SelectedRowInfo>(
+    initialSelectedRowInfo
+  );
 
   return (
     <MotionConfig
@@ -19,7 +31,7 @@ function App() {
       <AppShell
         header={<AppHeader />}
         footer={<AppFooter />}
-        sidePanel={<SidePanel />}
+        sidePanel={<SidePanel selectedRowInfo={selectedRowInfo} />}
       >
         <section className="flex h-full flex-col gap-4">
           <header>
@@ -29,7 +41,7 @@ function App() {
           </header>
 
           <div className="flex-1">
-            <DataGrid />
+            <DataGrid onSelectionChange={setSelectedRowInfo} />
           </div>
         </section>
       </AppShell>

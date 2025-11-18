@@ -245,3 +245,155 @@ generateMockDataset → useDataset → useDataGrid
       motionSettings (tokens)
       motion.* wrappers in layout and grid components
 ```
+
+---
+
+## Phase 5 – Advanced grid state: columns, selection & views
+
+In Phase 5 the grid state model is extended to support **column configuration**,  
+**row selection** and **saved views**, while keeping the original data flow:
+
+`dataset → useDataset → useDataGrid → TanStack Table + Virtual`
+
+### 5.1. Extended grid state
+
+`gridStore` now manages, in addition to `sorting`, `columnFilters` and `globalFilter`:
+
+- **`columnVisibility: ColumnVisibilityState`**  
+  Map `GridColumnId → boolean` (or `undefined`), where `false` means “column is hidden”.  
+  When the state is empty or inconsistent, it is rebuilt from `gridColumns`
+  (all columns visible by default).
+
+- **`columnOrder: ColumnOrder`**  
+  Ordered array of `GridColumnId` that defines the logical order of columns.  
+  Default is `gridColumns.map(c => c.id)`.
+
+- **`rowSelection: RowSelectionState`**  
+  Aligned with TanStack Table (map `rowId → boolean`). Used to implement single row
+  selection and to derive selection-based aggregates.
+
+- **`views: GridView[]` and `activeViewId: GridViewId \| null`**  
+  Collection of predefined views (for example: `default`, `activeOnly`, `highAmount`)
+  plus the identifier of the currently applied view.
+
+The store exposes dedicated actions for each slice:
+
+- **Columns**
+  - `setColumnVisibility`, `toggleColumnVisibility`, `resetColumnVisibility`
+  - `setColumnOrder`, `moveColumn`, `resetColumnOrder`
+- **Selection**
+  - `setRowSelection`, `clearRowSelection`
+- **Views**
+  - `setViews`, `applyView`
+  - (Ready for `createView` / `updateView` / `deleteView` in later phases)
+
+### 5.2. `useDataGrid` as coordinator
+
+`useDataGrid` remains the coordination layer between **dataset**, **gridStore** and
+**TanStack Table**.
+
+In Phase 5 it:
+
+- Passes an extended state object into `useReactTable`:
+
+  ```ts
+  state: {
+    sorting,
+    columnFilters,
+    globalFilter,
+    columnVisibility,
+    columnOrder,
+    rowSelection,
+  }
+  ```
+
+- Wires TanStack callbacks back into the store:
+
+  ```ts
+  onColumnVisibilityChange: setColumnVisibility;
+  onColumnOrderChange: setColumnOrder;
+  onRowSelectionChange: setRowSelection;
+  ```
+
+- Exposes derived selection information (e.g. `selectedRowInfo`) to presentation
+  components such as `RowDetailPanel` and `DataGridStatsBar`.
+
+This keeps **all advanced interaction logic** (visibility/order, selection, views) in
+the same centralized state axis as sorting and filtering.
+
+### 5.3. Local storage snapshot
+
+Phase 5 introduces a lightweight persistence layer using `localStorage` to remember
+grid preferences between sessions.
+
+- Fixed key, for example: `datamotion-grid:gridState:v1`.
+- Snapshot (JSON) includes:
+  - `columnVisibility`
+  - `columnOrder`
+  - `views`
+  - `activeViewId`
+
+A small orchestrator (hook) is responsible for:
+
+1. Reading the snapshot on app mount and calling a store action such as
+   `hydrateFromStorage`.
+2. Listening for relevant store changes and writing an updated snapshot back to
+   `localStorage`.
+
+Only **grid configuration** is persisted, never the dataset itself. This keeps the
+payload small and tolerant to schema changes between versions.
+
+If the snapshot is missing, corrupted or refers to columns that no longer exist,
+the grid safely falls back to the default configuration.
+
+### 5.4. Side panel & selection detail
+
+The `SidePanel` evolves from a static placeholder into a live “insight panel” powered
+by the selection model:
+
+```text
+gridStore.rowSelection
+         │
+         ▼
+   useDataGrid / selectors
+         │
+         ▼
+  RowDetailPanel → SidePanel
+```
+
+`RowDetailPanel` handles three main states:
+
+1. **No selection (0 rows)**
+   - Shows an explicit empty state message.
+   - Brief guidance explaining that clicking a row will reveal details.
+
+2. **Single selection (1 row)**
+   - Displays key fields:
+     - `id`, `name`, `email`, `status`, `country`, `createdAt`, `amount`.
+   - Applies formatting:
+     - `amount` as a fixed decimal / currency-like string.
+     - `status` through a badge that reuses the existing visual language.
+
+3. **Multiple selection (N > 1)**
+   - Shows a summary label like “N rows selected”.
+   - Computes basic aggregates on the selected subset:
+     - Sum of `amount` for selected rows.
+     - Optional small breakdown by `status` (how many active/inactive, etc.).
+
+The side panel becomes an **analytical extension of the grid** without touching
+virtualization internals or dataset loading logic.
+
+### 5.5. Interaction with virtualized table
+
+The Phase 5 architecture is designed to stay compatible with the existing
+virtualization strategy:
+
+- `rowSelection` is handled at the **logical row** level, while rendering still
+  goes through `DataGridVirtualBody` and `DataGridRow`.
+- Column visibility and ordering are driven by TanStack state, so the virtualizer
+  only needs to know about the set of **visible** columns.
+- Changes in configuration (visibility/order/views) affect column rendering but do not
+  change how many rows are mounted in the DOM at any given time.
+
+As a result, the grid continues to support 5k–50k rows with smooth scrolling while
+adding significantly richer interaction and configuration capabilities in Phase 5.
